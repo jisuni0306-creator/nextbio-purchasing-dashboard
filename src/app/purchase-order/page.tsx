@@ -246,7 +246,7 @@ export default function PurchaseOrderDashboard() {
         <div className="mx-auto max-w-6xl px-5 py-9">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-bean shadow-sm ring-1 ring-cream-deep">
             <span className="h-1.5 w-1.5 rounded-full bg-caramel" />
-            모듈 ② 구매발주·품의서 자동 생성
+            구매물류팀 업무 자동화 시스템
           </span>
           <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-coffee sm:text-3xl">자동 발주서 작성 대시보드</h1>
           <p className="mt-2 max-w-2xl text-sm text-bean">
@@ -275,7 +275,6 @@ export default function PurchaseOrderDashboard() {
               </span>
             ))}
           </div>
-          <p className="mt-2 text-[11px] text-bean/70">노란색 = 사람 확인 지점(Human-in-the-loop). 승인 전에는 발송되지 않습니다.</p>
         </div>
       </header>
 

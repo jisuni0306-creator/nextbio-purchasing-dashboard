@@ -138,7 +138,7 @@ export default function PartnersDashboard() {
         <div className="mx-auto max-w-6xl px-5 py-9">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-bean shadow-sm ring-1 ring-cream-deep">
             <span className="h-1.5 w-1.5 rounded-full bg-caramel" />
-            거래처 관리대장
+            구매물류팀 업무 자동화 시스템
           </span>
           <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-coffee sm:text-3xl">거래처 관리대장</h1>
           <p className="mt-2 max-w-2xl text-sm text-bean">
