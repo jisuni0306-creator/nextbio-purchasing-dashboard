@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import DashboardNav from "@/components/DashboardNav";
 import { useInventory } from "@/lib/useInventory";
 import {
@@ -46,6 +46,7 @@ export default function InventoryDashboard() {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Item | null>(null);
   const [isNew, setIsNew] = useState(false);
+  const [expandedWh, setExpandedWh] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // 월별 구매(입고) 집계 — 업로드한 ERP 파일에서 누적
@@ -207,7 +208,7 @@ export default function InventoryDashboard() {
         <section className="mt-7">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <h2 className="text-lg font-extrabold text-coffee">창고별 재고현황</h2>
-            <span className="text-xs text-bean/70">총 {WAREHOUSE_LIST.length}개 창고 · 재고 합계 {fmt(totalStockSum)} · 행을 누르면 해당 창고 품목만 표시</span>
+            <span className="text-xs text-bean/70">총 {WAREHOUSE_LIST.length}개 창고 · 재고 합계 {fmt(totalStockSum)} · 창고를 누르면 해당 창고 재고가 펼쳐집니다</span>
           </div>
           <div className="mt-3 overflow-hidden rounded-2xl border border-cream-deep bg-white shadow-sm">
             <div className="max-h-[420px] overflow-y-auto">
@@ -223,44 +224,97 @@ export default function InventoryDashboard() {
                 </thead>
                 <tbody>
                   {warehouseRows.map((w) => {
-                    const active = warehouse === w.name;
+                    const open = expandedWh === w.name;
                     const hasItems = w.count > 0;
                     const barW = (Math.abs(w.total) / maxTotal) * 100;
+                    const whItems = open ? items.filter((i) => (i.warehouse || "미지정") === w.name) : [];
                     return (
-                      <tr
-                        key={w.code + w.name}
-                        onClick={() => hasItems && setWarehouse(active ? "전체" : w.name)}
-                        className={`border-b border-cream-deep/50 last:border-0 ${active ? "bg-caramel/10" : ""} ${hasItems ? "cursor-pointer hover:bg-cream" : ""}`}
-                      >
-                        <td className="px-4 py-2.5 font-mono text-xs text-bean">{w.code}</td>
-                        <td className="px-2 py-2.5 font-bold text-ink">
-                          🏬 {w.name}
-                          {active && <span className="ml-1.5 rounded bg-caramel/30 px-1.5 py-0.5 text-[10px] font-bold text-roast">선택</span>}
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <div className={`font-bold tabular-nums ${w.total < 0 ? "text-rose-600" : "text-roast"}`}>{fmt(w.total)}</div>
-                          <div className="ml-auto mt-1 h-1.5 w-24 overflow-hidden rounded-full bg-cream-deep">
-                            <span className={`block h-full rounded-full ${w.total < 0 ? "bg-rose-400" : "bg-bean"}`} style={{ width: `${barW}%` }} />
-                          </div>
-                        </td>
-                        <td className="px-2 py-2.5 text-center tabular-nums text-bean">{hasItems ? `${w.count}개` : "—"}</td>
-                        <td className="px-4 py-2.5">
-                          {hasItems ? (
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-2 w-28 overflow-hidden rounded-full bg-cream-deep">
-                                {w.부족 > 0 && <span className="bg-rose-500" style={{ width: `${(w.부족 / w.count) * 100}%` }} />}
-                                {w.정상 > 0 && <span className="bg-bio" style={{ width: `${(w.정상 / w.count) * 100}%` }} />}
-                                {w.과잉 > 0 && <span className="bg-amber-500" style={{ width: `${(w.과잉 / w.count) * 100}%` }} />}
-                              </div>
-                              <span className="text-[11px] text-bean/70">
-                                <b className="text-rose-600">{w.부족}</b> / <b className="text-bio-deep">{w.정상}</b> / <b className="text-amber-700">{w.과잉}</b>
-                              </span>
+                      <Fragment key={w.code + w.name}>
+                        <tr
+                          onClick={() => hasItems && setExpandedWh(open ? null : w.name)}
+                          className={`border-b border-cream-deep/50 ${open ? "bg-caramel/10" : ""} ${hasItems ? "cursor-pointer hover:bg-cream" : ""}`}
+                        >
+                          <td className="px-4 py-2.5 font-mono text-xs text-bean">{w.code}</td>
+                          <td className="px-2 py-2.5 font-bold text-ink">
+                            {hasItems && <span className="mr-1 inline-block w-3 text-bean">{open ? "▾" : "▸"}</span>}
+                            🏬 {w.name}
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <div className={`font-bold tabular-nums ${w.total < 0 ? "text-rose-600" : "text-roast"}`}>{fmt(w.total)}</div>
+                            <div className="ml-auto mt-1 h-1.5 w-24 overflow-hidden rounded-full bg-cream-deep">
+                              <span className={`block h-full rounded-full ${w.total < 0 ? "bg-rose-400" : "bg-bean"}`} style={{ width: `${barW}%` }} />
                             </div>
-                          ) : (
-                            <span className="text-xs text-bean/40">품목 데이터 없음</span>
-                          )}
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="px-2 py-2.5 text-center tabular-nums text-bean">{hasItems ? `${w.count}개` : "—"}</td>
+                          <td className="px-4 py-2.5">
+                            {hasItems ? (
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-2 w-28 overflow-hidden rounded-full bg-cream-deep">
+                                  {w.부족 > 0 && <span className="bg-rose-500" style={{ width: `${(w.부족 / w.count) * 100}%` }} />}
+                                  {w.정상 > 0 && <span className="bg-bio" style={{ width: `${(w.정상 / w.count) * 100}%` }} />}
+                                  {w.과잉 > 0 && <span className="bg-amber-500" style={{ width: `${(w.과잉 / w.count) * 100}%` }} />}
+                                </div>
+                                <span className="text-[11px] text-bean/70">
+                                  <b className="text-rose-600">{w.부족}</b> / <b className="text-bio-deep">{w.정상}</b> / <b className="text-amber-700">{w.과잉}</b>
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-bean/40">품목 데이터 없음</span>
+                            )}
+                          </td>
+                        </tr>
+
+                        {open && (
+                          <tr className="bg-cream/40">
+                            <td colSpan={5} className="px-4 pb-3 pt-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-roast">🏬 {w.name} 재고 {w.count}건</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setWarehouse(w.name); document.getElementById("item-table")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+                                  className="rounded-lg border border-cream-deep bg-white px-2.5 py-1 text-xs font-medium text-bean hover:bg-cream-deep"
+                                >
+                                  표에서 자세히 보기·편집 →
+                                </button>
+                              </div>
+                              <div className="mt-2 max-h-72 overflow-y-auto rounded-lg border border-cream-deep bg-white">
+                                <table className="w-full text-xs">
+                                  <thead className="sticky top-0">
+                                    <tr className="border-b border-cream-deep bg-cream text-bean">
+                                      <th className="px-3 py-1.5 text-left font-semibold">품목</th>
+                                      <th className="px-2 py-1.5 text-right font-semibold">현재고</th>
+                                      <th className="px-2 py-1.5 text-center font-semibold">상태</th>
+                                      <th className="px-2 py-1.5 text-right font-semibold">적정(ROP)</th>
+                                      <th className="px-2 py-1.5 text-right font-semibold">발주제안</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {whItems.map((it) => {
+                                      const st = statusOf(it);
+                                      const sq = suggestedQty(it);
+                                      return (
+                                        <tr key={it.code} className="border-b border-cream-deep/40 last:border-0">
+                                          <td className="px-3 py-1.5">
+                                            <div className="font-semibold text-ink">{it.name}</div>
+                                            <div className="text-[10px] text-bean/50">{it.code}{it.location ? ` · ${it.location}` : ""}</div>
+                                          </td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums text-roast">{num(it.onHand)} <span className="text-[10px] text-bean/50">{it.unit}</span></td>
+                                          <td className="px-2 py-1.5 text-center">
+                                            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${STATUS_STYLE[st].chip}`}>{st}</span>
+                                          </td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums text-bean">{num(rop(it))}</td>
+                                          <td className="px-2 py-1.5 text-right tabular-nums">
+                                            {sq > 0 ? <span className="font-bold text-rose-600">{num(sq)} {it.unit}</span> : <span className="text-bean/40">—</span>}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -392,7 +446,7 @@ export default function InventoryDashboard() {
         </section>
 
         {/* Table */}
-        <section className="mt-3 overflow-x-auto rounded-2xl border border-cream-deep bg-white shadow-sm">
+        <section id="item-table" className="mt-3 scroll-mt-20 overflow-x-auto rounded-2xl border border-cream-deep bg-white shadow-sm">
           <table className="w-full min-w-[1040px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-cream-deep bg-cream text-xs text-bean">
