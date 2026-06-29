@@ -134,15 +134,15 @@ export default function PartnersDashboard() {
     <main className="min-h-screen bg-cream text-ink">
       <DashboardNav />
 
-      <header className="bg-gradient-to-br from-espresso via-coffee to-roast text-cream">
+      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-caramel-light/40">
         <div className="mx-auto max-w-6xl px-5 py-9">
-          <span className="inline-flex items-center gap-2 rounded-full bg-cream/10 px-3 py-1 text-xs font-medium text-cream-deep ring-1 ring-cream/15">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-bean shadow-sm ring-1 ring-cream-deep">
             <span className="h-1.5 w-1.5 rounded-full bg-caramel" />
             거래처 관리대장
           </span>
-          <h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl">거래처 관리대장</h1>
-          <p className="mt-2 max-w-2xl text-sm text-cream-deep/75">
-            매입·매출 거래처 정보를 한 곳에서 관리하고, <span className="text-caramel-light">AppSheet 등록 폼</span>과 구글시트로 연동합니다.
+          <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-coffee sm:text-3xl">거래처 관리대장</h1>
+          <p className="mt-2 max-w-2xl text-sm text-bean">
+            매입·매출 거래처 정보를 한 곳에서 관리하고, <span className="font-semibold text-roast">AppSheet 등록 폼</span>과 구글시트로 연동합니다.
           </p>
         </div>
       </header>

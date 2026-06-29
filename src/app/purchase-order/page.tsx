@@ -242,15 +242,15 @@ export default function PurchaseOrderDashboard() {
       <DashboardNav />
 
       {/* Header */}
-      <header className="bg-gradient-to-br from-espresso via-coffee to-roast text-cream">
+      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-caramel-light/40">
         <div className="mx-auto max-w-6xl px-5 py-9">
-          <span className="inline-flex items-center gap-2 rounded-full bg-cream/10 px-3 py-1 text-xs font-medium text-cream-deep ring-1 ring-cream/15">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-bean shadow-sm ring-1 ring-cream-deep">
             <span className="h-1.5 w-1.5 rounded-full bg-caramel" />
             모듈 ② 구매발주·품의서 자동 생성
           </span>
-          <h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl">자동 발주서 작성 대시보드</h1>
-          <p className="mt-2 max-w-2xl text-sm text-cream-deep/75">
-            적정재고 미달 품목을 공급사별 발주서로 자동 구성합니다. 사람은 <span className="text-caramel-light">검토·승인</span>만 하면 됩니다.
+          <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-coffee sm:text-3xl">자동 발주서 작성 대시보드</h1>
+          <p className="mt-2 max-w-2xl text-sm text-bean">
+            적정재고 미달 품목을 공급사별 발주서로 자동 구성합니다. 사람은 <span className="font-semibold text-roast">검토·승인</span>만 하면 됩니다.
           </p>
 
           {/* 6단계 흐름 */}
@@ -265,17 +265,17 @@ export default function PurchaseOrderDashboard() {
             ].map(([label, gate], i) => (
               <span key={i} className="flex items-center gap-1.5">
                 <span
-                  className={`rounded-md px-2 py-1 font-medium ring-1 ${
-                    gate ? "bg-caramel/15 text-caramel-light ring-caramel/30" : "bg-cream/5 text-cream-deep ring-cream/10"
+                  className={`rounded-md px-2 py-1 font-semibold ring-1 ${
+                    gate ? "bg-caramel/20 text-roast ring-caramel/40" : "bg-white text-bean ring-cream-deep"
                   }`}
                 >
                   {label as string}
                 </span>
-                {i < 5 && <span className="text-bean">→</span>}
+                {i < 5 && <span className="text-bean/50">→</span>}
               </span>
             ))}
           </div>
-          <p className="mt-2 text-[11px] text-cream-deep/55">노란색 = 사람 확인 지점(Human-in-the-loop). 승인 전에는 발송되지 않습니다.</p>
+          <p className="mt-2 text-[11px] text-bean/70">노란색 = 사람 확인 지점(Human-in-the-loop). 승인 전에는 발송되지 않습니다.</p>
         </div>
       </header>
 

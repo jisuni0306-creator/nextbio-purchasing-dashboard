@@ -180,16 +180,16 @@ export default function InventoryDashboard() {
       <DashboardNav />
 
       {/* Header */}
-      <header className="bg-gradient-to-br from-espresso via-coffee to-roast text-cream">
+      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-caramel-light/40">
         <div className="mx-auto max-w-6xl px-5 py-9">
-          <span className="inline-flex items-center gap-2 rounded-full bg-cream/10 px-3 py-1 text-xs font-medium text-cream-deep ring-1 ring-cream/15">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-bean shadow-sm ring-1 ring-cream-deep">
             <span className="h-1.5 w-1.5 rounded-full bg-caramel" />
             모듈 ① 적정재고 자동 체크
           </span>
-          <h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl">적정재고 현황 대시보드</h1>
-          <p className="mt-2 max-w-2xl text-sm text-cream-deep/75">
+          <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-coffee sm:text-3xl">적정재고 현황 대시보드</h1>
+          <p className="mt-2 max-w-2xl text-sm text-bean">
             통합 기준 시트(SSOT)에서 ROP·안전재고를 기준으로 부족/과잉을 자동 판정합니다.
-            <span className="text-caramel-light"> ROP = 일평균출고 × 리드타임 + 안전재고</span>
+            <span className="font-semibold text-roast"> ROP = 일평균출고 × 리드타임 + 안전재고</span>
           </p>
         </div>
       </header>

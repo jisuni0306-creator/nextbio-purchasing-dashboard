@@ -33,18 +33,18 @@ export default function Home() {
     <main className="min-h-screen bg-cream text-ink">
       <DashboardNav />
 
-      <header className="bg-gradient-to-br from-espresso via-coffee to-roast text-cream">
+      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-caramel-light/40">
         <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
-          <span className="inline-flex items-center gap-2 rounded-full bg-cream/10 px-3 py-1 text-xs font-medium text-cream-deep ring-1 ring-cream/15">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-bean shadow-sm ring-1 ring-cream-deep">
             <span className="h-1.5 w-1.5 rounded-full bg-caramel" />
             구매물류팀 업무 자동화 시스템
           </span>
-          <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
-            구매물류 자동화 대시보드
+          <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-tight text-coffee sm:text-4xl">
+            구매물류 종합 현황
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-cream-deep/80 sm:text-base">
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-bean sm:text-base">
             위하고·구글시트 데이터를 단일 기준으로, 재고 감지 → 발주/품의 → 거래처 관리까지
-            하나의 흐름으로 연결하는 통합 자동화 대시보드입니다.
+            한눈에 모아 보는 구매물류 종합 현황입니다.
           </p>
         </div>
       </header>
