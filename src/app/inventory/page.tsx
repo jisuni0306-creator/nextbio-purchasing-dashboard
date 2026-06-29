@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DashboardNav from "@/components/DashboardNav";
 import { useInventory } from "@/lib/useInventory";
 import {
@@ -47,6 +47,28 @@ export default function InventoryDashboard() {
   const [editing, setEditing] = useState<Item | null>(null);
   const [isNew, setIsNew] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // 월별 구매(입고) 집계 — 업로드한 ERP 파일에서 누적
+  type MonthRec = { qty: number; amount: number; items: number };
+  const [monthly, setMonthly] = useState<Record<string, MonthRec>>({});
+  const [monthlyHydrated, setMonthlyHydrated] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("monthly-purchase-v1");
+      if (raw) setMonthly(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+    setMonthlyHydrated(true);
+  }, []);
+  useEffect(() => {
+    if (!monthlyHydrated) return;
+    try {
+      localStorage.setItem("monthly-purchase-v1", JSON.stringify(monthly));
+    } catch {
+      /* ignore */
+    }
+  }, [monthly, monthlyHydrated]);
 
   const suppliers = useMemo(
     () => ["전체", ...Array.from(new Set(items.map((i) => i.supplier)))],
@@ -126,6 +148,15 @@ export default function InventoryDashboard() {
       } else if (confirm(`${parsed.length}개 품목을 불러옵니다. 현재 목록을 교체할까요?`)) {
         setItems(parsed);
         setFilter("전체"); setSupplier("전체"); setWarehouse("전체"); setQ("");
+
+        // 월별 구매(입고) 집계: 파일명에서 연월 추출(예: ..._20260629 → 2026-06)
+        const qty = parsed.reduce((s, i) => s + (i.monthlyIn || 0), 0);
+        if (qty > 0) {
+          const m = file.name.match(/(20\d{2})[._-]?(0[1-9]|1[0-2])/);
+          const month = m ? `${m[1]}-${m[2]}` : "기간미상";
+          const amount = parsed.reduce((s, i) => s + (i.monthlyIn || 0) * i.unitPrice, 0);
+          setMonthly((prev) => ({ ...prev, [month]: { qty, amount, items: parsed.length } }));
+        }
       }
     } catch (err) {
       alert("파일을 읽지 못했습니다: " + (err instanceof Error ? err.message : String(err)));
@@ -235,6 +266,58 @@ export default function InventoryDashboard() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </section>
+
+        {/* 월별 구매(입고) 현황 */}
+        <section className="mt-7">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-extrabold text-coffee">월별 구매(입고) 현황</h2>
+              <span className="text-xs text-bean/70">엑셀 업로드 시 입고수량 기준으로 월별 누적됩니다.</span>
+            </div>
+            {Object.keys(monthly).length > 0 && (
+              <button onClick={() => confirm("월별 구매 기록을 비울까요?") && setMonthly({})} className="rounded-lg border border-cream-deep bg-white px-3 py-1.5 text-xs font-medium text-bean hover:bg-cream-deep">비우기</button>
+            )}
+          </div>
+          <div className="mt-3 rounded-2xl border border-cream-deep bg-white p-5 shadow-sm">
+            {Object.keys(monthly).length === 0 ? (
+              <p className="py-6 text-center text-sm text-bean/60">
+                아직 집계된 월이 없습니다. ‘CSV/엑셀 업로드’로 월 재고현황(입고수량 포함) 파일을 올리면 월별 구매가 누적됩니다.
+              </p>
+            ) : (
+              (() => {
+                const entries = Object.entries(monthly).sort((a, b) => (a[0] < b[0] ? -1 : 1));
+                const max = Math.max(...entries.map(([, m]) => m.qty), 1);
+                const hasAmount = entries.some(([, m]) => m.amount > 0);
+                return (
+                  <div className="space-y-3">
+                    {entries.map(([month, m]) => (
+                      <div key={month} className="flex items-center gap-3">
+                        <span className="w-20 shrink-0 text-sm font-bold text-roast">{month}</span>
+                        <div className="h-6 flex-1 overflow-hidden rounded-md bg-cream-deep">
+                          <div
+                            className="flex h-full items-center justify-end rounded-md bg-bean px-2 text-[11px] font-bold text-cream"
+                            style={{ width: `${Math.max(10, (m.qty / max) * 100)}%` }}
+                          >
+                            {num(m.qty)}
+                          </div>
+                        </div>
+                        <span className="w-28 shrink-0 text-right text-sm font-bold tabular-nums text-ink">
+                          {m.amount > 0 ? won(m.amount) : <span className="font-medium text-bean/50">단가 미연동</span>}
+                        </span>
+                        <span className="w-16 shrink-0 text-right text-[11px] text-bean/60">{num(m.items)}품목</span>
+                      </div>
+                    ))}
+                    {!hasAmount && (
+                      <p className="pt-1 text-[11px] text-bean/60">
+                        ※ 금액은 품목 단가가 있어야 표시됩니다. 단가가 포함된 품목 마스터를 업로드하면 구매 금액(₩)으로 환산됩니다.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()
+            )}
           </div>
         </section>
 

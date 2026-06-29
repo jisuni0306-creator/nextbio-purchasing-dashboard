@@ -19,6 +19,8 @@ export interface Item {
   safetyStock: number; // 안전재고
   moq: number; // 최소발주수량(MOQ)
   abc: ABC; // ABC 등급
+  monthlyIn?: number; // 월 입고수량(구매) — ERP 업로드 시
+  monthlyOut?: number; // 월 출고수량 — 수요 산정에 사용
 }
 
 // 발주 주기(검토 주기): 적정재고(목표재고) 상한 산정에 사용
@@ -27,6 +29,10 @@ export const REVIEW_PERIOD_DAYS = 7;
 export const OVERSTOCK_FACTOR = 1.5;
 // 발주서 1건 금액 한도(원): 초과 시 추가 결재 플래그
 export const APPROVAL_LIMIT = 5_000_000;
+// ERP 월 데이터에서 일평균출고/안전재고를 직접 산정할 때 쓰는 기준값
+export const PERIOD_DAYS = 30; // 월 출고 → 일평균출고 환산
+export const LEAD_TIME_DEFAULT = 7; // 리드타임 미지정 시 기본(일)
+export const SAFETY_DAYS = 7; // 안전재고 = 일평균출고 × SAFETY_DAYS
 
 // 재주문점(ROP) = 일평균출고 × 리드타임 + 안전재고
 export const rop = (it: Item) =>
@@ -169,7 +175,9 @@ const ALIAS: Record<string, keyof Item> = {
   현재고: "onHand", 재고수량: "onHand", 재고: "onHand", onhand: "onHand",
   일평균출고: "avgDailyOut", avgdailyout: "avgDailyOut",
   리드타임: "leadTimeDays", leadtime: "leadTimeDays", leadtimedays: "leadTimeDays",
-  안전재고: "safetyStock", 적정재고량: "safetyStock", 적정재고: "safetyStock", safetystock: "safetyStock",
+  안전재고: "safetyStock", safetystock: "safetyStock",
+  입고수량: "monthlyIn", 입고: "monthlyIn",
+  출고수량: "monthlyOut", 출고: "monthlyOut",
   moq: "moq",
   abc: "abc",
 };
@@ -206,6 +214,25 @@ export function rowsToItems(rows: Record<string, unknown>[]): Item[] {
     }
     seen.add(code);
     const abcRaw = String(o.abc ?? "").trim().toUpperCase();
+
+    const monthlyIn = toNum(o.monthlyIn);
+    const monthlyOut = toNum(o.monthlyOut);
+    // 일평균출고: 명시값이 있으면 사용, 없으면 월 출고수량 ÷ 기준일수로 직접 산정.
+    const avgDailyOut =
+      o.avgDailyOut !== undefined && toNum(o.avgDailyOut) > 0
+        ? toNum(o.avgDailyOut)
+        : monthlyOut > 0
+          ? +(monthlyOut / PERIOD_DAYS).toFixed(2)
+          : 0;
+    // 리드타임: 명시값 없으면 수요가 있는 품목에 기본 리드타임 적용.
+    const givenLead = toNum(o.leadTimeDays);
+    const leadTimeDays = givenLead > 0 ? givenLead : avgDailyOut > 0 ? LEAD_TIME_DEFAULT : 0;
+    // 안전재고: 명시값(안전재고)이 있으면 사용, 없으면 일평균출고 × SAFETY_DAYS로 직접 산정.
+    const safetyStock =
+      o.safetyStock !== undefined && String(o.safetyStock).trim() !== ""
+        ? toNum(o.safetyStock)
+        : Math.round(avgDailyOut * SAFETY_DAYS);
+
     out.push({
       code,
       name: String(o.name ?? "").trim() || baseCode,
@@ -215,11 +242,13 @@ export function rowsToItems(rows: Record<string, unknown>[]): Item[] {
       unit: String(o.unit ?? "").trim() || "EA",
       unitPrice: toNum(o.unitPrice),
       onHand: toNum(o.onHand),
-      avgDailyOut: toNum(o.avgDailyOut),
-      leadTimeDays: toNum(o.leadTimeDays),
-      safetyStock: toNum(o.safetyStock),
+      avgDailyOut,
+      leadTimeDays,
+      safetyStock,
       moq: Math.max(1, toNum(o.moq)),
       abc: (["A", "B", "C"].includes(abcRaw) ? abcRaw : "B") as ABC,
+      monthlyIn,
+      monthlyOut,
     });
   }
   return out;
