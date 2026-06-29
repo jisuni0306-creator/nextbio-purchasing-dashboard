@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  /* Coffee / espresso scale */
+  --color-espresso: #19100a;
+  --color-coffee: #271810;
+  --color-roast: #43291a;
+  --color-bean: #6b4226;
+  --color-caramel: #c79049;
+  --color-caramel-light: #e3b87e;
+
+  /* Cream surfaces */
+  --color-cream: #f8f3ea;
+  --color-cream-deep: #efe6d6;
+
+  /* Bio / health green accent */
+  --color-bio: #2f9e6e;
+  --color-bio-deep: #1c7a52;
+
+  --color-ink: #211309;
+
+  --font-sans: var(--font-noto-kr), system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #211309;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-caramel);
+  color: #fff;
+}
+
+/* Subtle reveal-on-scroll friendly default */
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 7s ease-in-out infinite;
+}
