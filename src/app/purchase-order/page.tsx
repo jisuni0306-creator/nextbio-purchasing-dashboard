@@ -25,7 +25,7 @@ const HISTORY_KEY = "purchase-history-v1";
 
 const STATE_META: Record<POState, { label: string; chip: string }> = {
   draft: { label: "검토 대기", chip: "bg-cream-deep text-bean" },
-  approved: { label: "승인됨", chip: "bg-caramel/25 text-roast" },
+  approved: { label: "승인됨", chip: "bg-mint/25 text-roast" },
   sent: { label: "발송 완료", chip: "bg-bio/15 text-bio-deep" },
 };
 
@@ -242,10 +242,10 @@ export default function PurchaseOrderDashboard() {
       <DashboardNav />
 
       {/* Header */}
-      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-caramel-light/40">
+      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-mint-light/40">
         <div className="mx-auto max-w-6xl px-5 py-9">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-bean shadow-sm ring-1 ring-cream-deep">
-            <span className="h-1.5 w-1.5 rounded-full bg-caramel" />
+            <span className="h-1.5 w-1.5 rounded-full bg-mint" />
             구매물류팀 업무 자동화 시스템
           </span>
           <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-coffee sm:text-3xl">자동 발주서 작성 대시보드</h1>
@@ -266,7 +266,7 @@ export default function PurchaseOrderDashboard() {
               <span key={i} className="flex items-center gap-1.5">
                 <span
                   className={`rounded-md px-2 py-1 font-semibold ring-1 ${
-                    gate ? "bg-caramel/20 text-roast ring-caramel/40" : "bg-white text-bean ring-cream-deep"
+                    gate ? "bg-mint/20 text-roast ring-mint/40" : "bg-white text-bean ring-cream-deep"
                   }`}
                 >
                   {label as string}
@@ -342,7 +342,7 @@ export default function PurchaseOrderDashboard() {
                                 value={l.qty}
                                 disabled={locked}
                                 onChange={(e) => setQty(l.it.code, Number(e.target.value) || 0)}
-                                className="w-24 rounded border border-cream-deep px-1.5 py-1 text-center text-sm font-bold text-ink focus:border-caramel focus:outline-none disabled:bg-cream disabled:text-bean/50"
+                                className="w-24 rounded border border-cream-deep px-1.5 py-1 text-center text-sm font-bold text-ink focus:border-mint focus:outline-none disabled:bg-cream disabled:text-bean/50"
                               />
                               <span className="ml-1 text-[10px] text-bean/50">{l.it.unit}</span>
                             </td>
@@ -437,7 +437,7 @@ export default function PurchaseOrderDashboard() {
 
 function Kpi({ label, value, unit, money }: { label: string; value: string; unit: string; money?: boolean }) {
   return (
-    <div className={`rounded-2xl border p-4 shadow-sm ${money ? "border-caramel/40 bg-caramel/10" : "border-cream-deep bg-white"}`}>
+    <div className={`rounded-2xl border p-4 shadow-sm ${money ? "border-mint/40 bg-mint/10" : "border-cream-deep bg-white"}`}>
       <p className="text-xs font-medium text-bean">{label}</p>
       <p className={`mt-1 text-xl font-extrabold tabular-nums sm:text-2xl ${money ? "text-bean" : "text-ink"}`}>{value}</p>
       <p className="text-xs text-bean/60">{unit}</p>

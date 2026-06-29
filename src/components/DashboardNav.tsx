@@ -30,7 +30,7 @@ export default function DashboardNav() {
               }`}
             >
               {l.label}
-              <span className={`ml-1.5 text-[10px] font-medium ${active ? "text-caramel-light" : "text-bean/60"}`}>
+              <span className={`ml-1.5 text-[10px] font-medium ${active ? "text-mint-light" : "text-bean/60"}`}>
                 {l.sub}
               </span>
             </Link>

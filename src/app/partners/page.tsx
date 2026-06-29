@@ -17,7 +17,7 @@ import {
 } from "@/lib/partners";
 
 const TYPE_CHIP: Record<PartnerType, string> = {
-  매입처: "bg-caramel/25 text-roast",
+  매입처: "bg-mint/25 text-roast",
   매출처: "bg-bio/15 text-bio-deep",
   "매입+매출": "bg-bean/15 text-bean",
 };
@@ -134,10 +134,10 @@ export default function PartnersDashboard() {
     <main className="min-h-screen bg-cream text-ink">
       <DashboardNav />
 
-      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-caramel-light/40">
+      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-mint-light/40">
         <div className="mx-auto max-w-6xl px-5 py-9">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-bean shadow-sm ring-1 ring-cream-deep">
-            <span className="h-1.5 w-1.5 rounded-full bg-caramel" />
+            <span className="h-1.5 w-1.5 rounded-full bg-mint" />
             구매물류팀 업무 자동화 시스템
           </span>
           <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-coffee sm:text-3xl">거래처 관리대장</h1>
@@ -151,7 +151,7 @@ export default function PartnersDashboard() {
         {/* KPI */}
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <Kpi label="총 거래처" value={partners.length} unit="개사" tone="ink" />
-          <Kpi label="매입처" value={counts.매입} unit="개사" tone="caramel" />
+          <Kpi label="매입처" value={counts.매입} unit="개사" tone="mint" />
           <Kpi label="매출처" value={counts.매출} unit="개사" tone="bio" />
           <Kpi label="활성" value={counts.활성} unit="개사" tone="bio" />
           <Kpi label="거래중단" value={counts.중단} unit="개사" tone="rose" />
@@ -168,7 +168,7 @@ export default function PartnersDashboard() {
             <option value="전체">전체 상태</option>
             {PARTNER_STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
           </select>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="거래처·대표·담당·종목 검색" className="min-w-[150px] flex-1 rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs text-roast placeholder:text-bean/50 focus:border-caramel focus:outline-none" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="거래처·대표·담당·종목 검색" className="min-w-[150px] flex-1 rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs text-roast placeholder:text-bean/50 focus:border-mint focus:outline-none" />
           <button onClick={openNew} className="rounded-lg bg-espresso px-3 py-2 text-xs font-bold text-cream transition hover:bg-roast">+ 거래처 등록</button>
           <button onClick={() => fileRef.current?.click()} className="rounded-lg bg-bean px-3 py-2 text-xs font-bold text-cream transition hover:bg-roast">⬆ CSV/엑셀</button>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={onFile} className="hidden" />
@@ -259,7 +259,7 @@ export default function PartnersDashboard() {
                   value={appUrlInput}
                   onChange={(e) => setAppUrlInput(e.target.value)}
                   placeholder="https://www.appsheet.com/start/앱ID  (앱 공유 링크)"
-                  className="min-w-0 flex-1 rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs text-roast placeholder:text-bean/50 focus:border-caramel focus:outline-none"
+                  className="min-w-0 flex-1 rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs text-roast placeholder:text-bean/50 focus:border-mint focus:outline-none"
                 />
                 <button onClick={saveAppUrl} className="shrink-0 rounded-lg bg-espresso px-3 py-2 text-xs font-bold text-cream hover:bg-roast">임베드</button>
                 {appUrl && (
@@ -316,16 +316,16 @@ export default function PartnersDashboard() {
 
       <style>{`
         .input { width:100%; border:1px solid var(--color-cream-deep); border-radius:0.5rem; padding:0.45rem 0.6rem; font-size:0.875rem; color:var(--color-roast); background:#fff; }
-        .input:focus { outline:none; border-color:var(--color-caramel); }
+        .input:focus { outline:none; border-color:var(--color-mint); }
         .select { border:1px solid var(--color-cream-deep); border-radius:0.5rem; padding:0.5rem 0.7rem; font-size:0.75rem; font-weight:500; color:var(--color-bean); background:#fff; }
-        .select:focus { outline:none; border-color:var(--color-caramel); }
+        .select:focus { outline:none; border-color:var(--color-mint); }
       `}</style>
     </main>
   );
 }
 
-function Kpi({ label, value, unit, tone }: { label: string; value: number; unit: string; tone: "ink" | "caramel" | "bio" | "rose" }) {
-  const t = { ink: "text-ink", caramel: "text-bean", bio: "text-bio-deep", rose: "text-rose-600" }[tone];
+function Kpi({ label, value, unit, tone }: { label: string; value: number; unit: string; tone: "ink" | "mint" | "bio" | "rose" }) {
+  const t = { ink: "text-ink", mint: "text-bean", bio: "text-bio-deep", rose: "text-rose-600" }[tone];
   return (
     <div className="rounded-2xl border border-cream-deep bg-white p-4 shadow-sm">
       <p className="text-xs font-medium text-bean">{label}</p>

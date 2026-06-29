@@ -1,13 +1,18 @@
 @import "tailwindcss";
 
 @theme {
-  /* Coffee / espresso scale */
+  /* Chocolate / espresso scale (포인트: 초코) */
   --color-espresso: #19100a;
   --color-coffee: #271810;
   --color-roast: #43291a;
   --color-bean: #6b4226;
   --color-caramel: #c79049;
   --color-caramel-light: #e3b87e;
+
+  /* Mint accent (포인트: 민트) */
+  --color-mint: #2bb6a0;
+  --color-mint-deep: #16806f;
+  --color-mint-light: #a9e4d8;
 
   /* Cream surfaces */
   --color-cream: #f8f3ea;
@@ -41,7 +46,7 @@ body {
 }
 
 ::selection {
-  background: var(--color-caramel);
+  background: var(--color-mint);
   color: #fff;
 }
 

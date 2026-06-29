@@ -180,10 +180,10 @@ export default function InventoryDashboard() {
       <DashboardNav />
 
       {/* Header */}
-      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-caramel-light/40">
+      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-mint-light/40">
         <div className="mx-auto max-w-6xl px-5 py-9">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-bean shadow-sm ring-1 ring-cream-deep">
-            <span className="h-1.5 w-1.5 rounded-full bg-caramel" />
+            <span className="h-1.5 w-1.5 rounded-full bg-mint" />
             구매물류팀 업무 자동화 시스템
           </span>
           <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-coffee sm:text-3xl">적정재고 현황 대시보드</h1>
@@ -201,7 +201,7 @@ export default function InventoryDashboard() {
           <Kpi label="부족(재주문)" value={num(counts.부족)} unit="품목" tone="rose" />
           <Kpi label="과잉" value={num(counts.과잉)} unit="품목" tone="amber" />
           <Kpi label="정상" value={num(counts.정상)} unit="품목" tone="bio" />
-          <Kpi label="발주 필요 금액" value={won(reorderTotal)} unit="제안 합계" tone="caramel" wide />
+          <Kpi label="발주 필요 금액" value={won(reorderTotal)} unit="제안 합계" tone="mint" wide />
         </section>
 
         {/* 창고별 재고현황 */}
@@ -232,7 +232,7 @@ export default function InventoryDashboard() {
                       <Fragment key={w.code + w.name}>
                         <tr
                           onClick={() => hasItems && setExpandedWh(open ? null : w.name)}
-                          className={`border-b border-cream-deep/50 ${open ? "bg-caramel/10" : ""} ${hasItems ? "cursor-pointer hover:bg-cream" : ""}`}
+                          className={`border-b border-cream-deep/50 ${open ? "bg-mint/10" : ""} ${hasItems ? "cursor-pointer hover:bg-cream" : ""}`}
                         >
                           <td className="px-4 py-2.5 font-mono text-xs text-bean">{w.code}</td>
                           <td className="px-2 py-2.5 font-bold text-ink">
@@ -379,7 +379,7 @@ export default function InventoryDashboard() {
         {hydrated && shortItems.length > 0 && (
           <Link
             href="/purchase-order"
-            className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-caramel/50 bg-caramel/10 px-5 py-3.5 transition hover:bg-caramel/20"
+            className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-mint/50 bg-mint/10 px-5 py-3.5 transition hover:bg-mint/20"
           >
             <span className="text-sm font-bold text-roast">
               재주문점 미달 {shortItems.length}개 품목 · {won(reorderTotal)} 발주 필요
@@ -424,7 +424,7 @@ export default function InventoryDashboard() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="품목·창고·적치대 검색"
-            className="min-w-[150px] flex-1 rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs text-roast placeholder:text-bean/50 focus:border-caramel focus:outline-none"
+            className="min-w-[150px] flex-1 rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs text-roast placeholder:text-bean/50 focus:border-mint focus:outline-none"
           />
 
           <button onClick={openNew} className="rounded-lg bg-espresso px-3 py-2 text-xs font-bold text-cream transition hover:bg-roast">
@@ -491,7 +491,7 @@ export default function InventoryDashboard() {
                         type="number"
                         value={it.onHand}
                         onChange={(e) => patch(it.code, { onHand: Number(e.target.value) || 0 })}
-                        className="w-20 rounded border border-cream-deep bg-white px-1.5 py-1 text-center text-sm font-bold text-ink focus:border-caramel focus:outline-none"
+                        className="w-20 rounded border border-cream-deep bg-white px-1.5 py-1 text-center text-sm font-bold text-ink focus:border-mint focus:outline-none"
                       />
                       <div className="text-[10px] text-bean/50">{it.unit}</div>
                     </td>
@@ -587,9 +587,9 @@ export default function InventoryDashboard() {
 
       <style>{`
         .input { width:100%; border:1px solid var(--color-cream-deep); border-radius:0.5rem; padding:0.45rem 0.6rem; font-size:0.875rem; color:var(--color-roast); background:#fff; }
-        .input:focus { outline:none; border-color:var(--color-caramel); }
+        .input:focus { outline:none; border-color:var(--color-mint); }
         .select { border:1px solid var(--color-cream-deep); border-radius:0.5rem; padding:0.5rem 0.7rem; font-size:0.75rem; font-weight:500; color:var(--color-bean); background:#fff; }
-        .select:focus { outline:none; border-color:var(--color-caramel); }
+        .select:focus { outline:none; border-color:var(--color-mint); }
       `}</style>
     </main>
   );
@@ -600,15 +600,15 @@ export default function InventoryDashboard() {
 // 재고 합계: 소수점 있는 값은 최대 2자리까지 표시
 const fmt = (n: number) => n.toLocaleString("ko-KR", { maximumFractionDigits: 2 });
 
-function Kpi({ label, value, unit, tone, wide }: { label: string; value: string; unit: string; tone: "ink" | "rose" | "amber" | "bio" | "caramel"; wide?: boolean }) {
+function Kpi({ label, value, unit, tone, wide }: { label: string; value: string; unit: string; tone: "ink" | "rose" | "amber" | "bio" | "mint"; wide?: boolean }) {
   const tones = {
     ink: "text-ink",
     rose: "text-rose-600",
     amber: "text-amber-700",
     bio: "text-bio-deep",
-    caramel: "text-bean",
+    mint: "text-bean",
   }[tone];
-  const card = tone === "caramel" ? "border-caramel/40 bg-caramel/10" : "border-cream-deep bg-white";
+  const card = tone === "mint" ? "border-mint/40 bg-mint/10" : "border-cream-deep bg-white";
   return (
     <div className={`rounded-2xl border p-4 shadow-sm ${card} ${wide ? "col-span-2 lg:col-span-1" : ""}`}>
       <p className="text-xs font-medium text-bean">{label}</p>

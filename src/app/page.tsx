@@ -16,7 +16,7 @@ const CARDS = [
     title: "자동발주",
     sub: "모듈 ②",
     desc: "부족 품목을 공급사별 발주서로 자동 생성. 검토→승인→발송, 표준 발주서 양식 출력.",
-    accent: "from-caramel/20",
+    accent: "from-mint/20",
   },
   {
     href: "/partners",
@@ -33,10 +33,10 @@ export default function Home() {
     <main className="min-h-screen bg-cream text-ink">
       <DashboardNav />
 
-      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-caramel-light/40">
+      <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-mint-light/40">
         <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-bean shadow-sm ring-1 ring-cream-deep">
-            <span className="h-1.5 w-1.5 rounded-full bg-caramel" />
+            <span className="h-1.5 w-1.5 rounded-full bg-mint" />
             구매물류팀 업무 자동화 시스템
           </span>
           <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-tight text-coffee sm:text-4xl">
