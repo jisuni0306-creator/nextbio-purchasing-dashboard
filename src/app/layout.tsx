@@ -10,22 +10,12 @@ const notoSansKr = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  title: "넥스트바이오 | 세계 최고의 콜드브루 전문기업",
+  title: "구매물류 자동화 대시보드 | 적정재고·자동발주·거래처 관리",
   description:
-    "넥스트바이오는 24시간 자동화 공정으로 20Brix 콜드브루 원액을 월 300톤 연속 생산하는 콜드브루 OEM·ODM 전문기업입니다. 슈퍼 드롭 프로세스, 초미세 저온 분쇄, HPP 초고압 살균기술을 보유하고 있습니다.",
-  keywords: [
-    "넥스트바이오",
-    "콜드브루",
-    "OEM",
-    "ODM",
-    "커피 제조",
-    "HPP",
-    "Brewzen",
-  ],
+    "구매물류팀 업무 자동화 시스템 — 적정재고 자동 체크, 구매발주서 자동 생성, 거래처 관리대장(AppSheet 연동)을 한 곳에서.",
   openGraph: {
-    title: "넥스트바이오 | 세계 최고의 콜드브루 전문기업",
-    description:
-      "24시간 자동화 공정으로 월 300톤 콜드브루 원액을 생산하는 콜드브루 OEM·ODM 전문기업",
+    title: "구매물류 자동화 대시보드",
+    description: "적정재고 · 자동발주 · 거래처 관리 통합 대시보드",
     type: "website",
     locale: "ko_KR",
   },
