@@ -45,8 +45,9 @@ export const daysOfStock = (it: Item) =>
   it.avgDailyOut > 0 ? +(it.onHand / it.avgDailyOut).toFixed(1) : Infinity;
 
 export const statusOf = (it: Item): StockStatus => {
-  if (it.onHand <= rop(it)) return "부족";
-  if (it.onHand >= overstockLevel(it)) return "과잉";
+  // 적정/안전재고 기준(또는 ROP)이 0인 품목은 판정 근거가 없으므로 '정상'으로 둔다.
+  if (rop(it) > 0 && it.onHand <= rop(it)) return "부족";
+  if (targetStock(it) > 0 && it.onHand >= overstockLevel(it)) return "과잉";
   return "정상";
 };
 
@@ -161,14 +162,14 @@ const ALIAS: Record<string, keyof Item> = {
   품목코드: "code", code: "code",
   품목명: "name", name: "name",
   공급사: "supplier", supplier: "supplier",
-  창고: "warehouse", warehouse: "warehouse",
-  적치대: "location", 로케이션: "location", location: "location",
-  단위: "unit", unit: "unit",
+  창고: "warehouse", 창고명: "warehouse", warehouse: "warehouse",
+  적치대: "location", 로케이션: "location", 창고코드: "location", location: "location",
+  단위: "unit", 재고단위: "unit", unit: "unit",
   단가: "unitPrice", unitprice: "unitPrice",
-  현재고: "onHand", onhand: "onHand",
+  현재고: "onHand", 재고수량: "onHand", 재고: "onHand", onhand: "onHand",
   일평균출고: "avgDailyOut", avgdailyout: "avgDailyOut",
   리드타임: "leadTimeDays", leadtime: "leadTimeDays", leadtimedays: "leadTimeDays",
-  안전재고: "safetyStock", safetystock: "safetyStock",
+  안전재고: "safetyStock", 적정재고량: "safetyStock", 적정재고: "safetyStock", safetystock: "safetyStock",
   moq: "moq",
   abc: "abc",
 };
@@ -187,21 +188,30 @@ export function rowsToItems(rows: Record<string, unknown>[]): Item[] {
     return isFinite(v) ? v : 0;
   };
   const out: Item[] = [];
+  const seen = new Set<string>();
   for (const r of rows) {
     const o: Partial<Record<keyof Item, unknown>> = {};
     for (const [h, v] of Object.entries(r)) {
       const k = fieldKey(h);
       if (k) o[k] = v;
     }
-    const code = String(o.code ?? "").trim();
-    if (!code) continue;
+    const baseCode = String(o.code ?? "").trim();
+    if (!baseCode) continue;
+    const location = String(o.location ?? "").trim();
+    // 같은 품목코드가 여러 창고에 존재할 수 있으므로 키를 고유하게 만든다(코드·창고코드).
+    let code = baseCode;
+    if (seen.has(code)) {
+      code = location ? `${baseCode}·${location}` : `${baseCode}#${out.length}`;
+      while (seen.has(code)) code += "_";
+    }
+    seen.add(code);
     const abcRaw = String(o.abc ?? "").trim().toUpperCase();
     out.push({
       code,
-      name: String(o.name ?? "").trim() || code,
+      name: String(o.name ?? "").trim() || baseCode,
       supplier: String(o.supplier ?? "").trim(),
       warehouse: String(o.warehouse ?? "").trim() || WAREHOUSES[0],
-      location: String(o.location ?? "").trim(),
+      location,
       unit: String(o.unit ?? "").trim() || "EA",
       unitPrice: toNum(o.unitPrice),
       onHand: toNum(o.onHand),
