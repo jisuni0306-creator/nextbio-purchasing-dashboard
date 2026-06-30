@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { SAMPLE_SLOTS, type Slot } from "./racks";
 
-const KEY = "rack-slots-v1";
+const KEY = "rack-slots-v2";
 
 export function useRackSlots() {
   const [slots, setSlots] = useState<Slot[]>(SAMPLE_SLOTS);

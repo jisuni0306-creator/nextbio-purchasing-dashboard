@@ -1,17 +1,17 @@
 // 창고 적치대(랙) · Lot 적재 현황 모델 (모듈 ③: 실시간 재고·Lot)
-// 적치대 = 구역(라인) × 적치대번호(bay) × 단(level 1~4). 각 칸에 Lot/제품 적재.
+// 도면 기준: 적치대 폭 = 파렛트(plt) 수 (1385mm=1plt, 2585mm=2plt), 1S바이패스=통로, 기본 4단.
 import { parseCsv } from "./inventory";
 
 export const LEVELS = 4; // 적치대 기본 4단
-export const ZONES = ["A라인", "B라인", "C라인", "D라인"];
-export const BAYS_PER_ZONE = 8;
+export const PALLET_MM = 1385; // 1 파렛트 폭
+export const DOUBLE_MM = 2585; // 2 파렛트 폭
 
 export interface RackProduct {
   code: string;
   name: string;
   unit: string;
-  shelfLifeDays: number; // 유효기간(일)
-  color: string; // 제품별 색상(맵 시각화)
+  shelfLifeDays: number;
+  color: string;
 }
 
 export const RACK_PRODUCTS: RackProduct[] = [
@@ -25,17 +25,40 @@ export const RACK_PRODUCTS: RackProduct[] = [
   { code: "AD-201", name: "액상과당", unit: "kg", shelfLifeDays: 240, color: "#f06292" },
 ];
 
+// 라인(통로 포함) 레이아웃 — 도면 기준
+export type Seg =
+  | { kind: "bay"; mm: number; pallets: number }
+  | { kind: "aisle"; label: string };
+
+export interface LineDef {
+  name: string;
+  segs: Seg[];
+}
+
+const bay = (mm: number): Seg => ({ kind: "bay", mm, pallets: mm >= DOUBLE_MM ? 2 : 1 });
+const aisle = (label = "1S바이패스"): Seg => ({ kind: "aisle", label });
+
+export const LINES: LineDef[] = [
+  { name: "A라인", segs: [bay(2585), bay(2585), bay(2585), aisle(), bay(2585), bay(2585), bay(2585), bay(1385)] },
+  { name: "B라인", segs: [bay(2585), bay(2585), bay(2585), aisle(), bay(2585), bay(2585), bay(2585), bay(1385)] },
+  { name: "C라인", segs: [bay(1385), bay(2585), bay(2585), bay(2585), bay(2585), aisle(), bay(2585), bay(2585), bay(2585), bay(1385)] },
+  { name: "D라인", segs: [bay(1385), bay(2585), bay(2585), bay(2585), bay(2585), aisle(), bay(2585), bay(2585), bay(2585), bay(1385)] },
+  { name: "E라인", segs: [bay(2585), bay(2585), bay(2585), bay(2585), bay(1385)] },
+  { name: "F라인", segs: [bay(2585), bay(2585), bay(2585)] },
+];
+
 export interface Slot {
-  zone: string;
-  bay: number; // 적치대 번호 (1~)
+  zone: string; // 라인
+  bay: number; // 적치대 번호(라인 내 좌→우, 통로 제외)
+  pallet: number; // 파렛트 위치(적치대 내 1~2)
   level: number; // 단 (1~4)
-  lotNo: string; // Lot 번호 (빈 칸이면 "")
+  lotNo: string;
   code: string;
   name: string;
   unit: string;
   qty: number;
-  inDate: string; // 입고일 (YYYY-MM-DD)
-  expiry: string; // 유효기간 (YYYY-MM-DD)
+  inDate: string;
+  expiry: string;
 }
 
 const addDays = (base: string, n: number) => {
@@ -48,21 +71,26 @@ const addDays = (base: string, n: number) => {
 export const SAMPLE_SLOTS: Slot[] = (() => {
   const out: Slot[] = [];
   let idx = 0;
-  ZONES.forEach((zone, zi) => {
-    for (let bay = 1; bay <= BAYS_PER_ZONE; bay++) {
-      for (let level = LEVELS; level >= 1; level--) {
-        idx++;
-        const empty = { zone, bay, level, lotNo: "", code: "", name: "", unit: "", qty: 0, inDate: "", expiry: "" };
-        if (idx % 10 >= 7) { out.push(empty); continue; } // ~70% 적재
-        const p = RACK_PRODUCTS[(zi * 3 + bay + level) % RACK_PRODUCTS.length];
-        const inDate = addDays("2026-01-05", (idx * 11) % 175);
-        const expiry = addDays(inDate, p.shelfLifeDays);
-        const seq = String((idx % 9) + 1).padStart(2, "0");
-        const lotNo = `${p.code}-${inDate.replace(/-/g, "").slice(2)}-${seq}`;
-        const qty = p.unit === "kg" ? 50 + (idx % 40) * 5 : 1000 + (idx % 50) * 200;
-        out.push({ zone, bay, level, lotNo, code: p.code, name: p.name, unit: p.unit, qty, inDate, expiry });
+  LINES.forEach((line, li) => {
+    let bayNo = 0;
+    line.segs.forEach((seg) => {
+      if (seg.kind !== "bay") return;
+      bayNo++;
+      for (let pallet = 1; pallet <= seg.pallets; pallet++) {
+        for (let level = LEVELS; level >= 1; level--) {
+          idx++;
+          const empty: Slot = { zone: line.name, bay: bayNo, pallet, level, lotNo: "", code: "", name: "", unit: "", qty: 0, inDate: "", expiry: "" };
+          if (idx % 10 >= 7) { out.push(empty); continue; }
+          const p = RACK_PRODUCTS[(li * 3 + bayNo + pallet + level) % RACK_PRODUCTS.length];
+          const inDate = addDays("2026-01-05", (idx * 11) % 175);
+          const expiry = addDays(inDate, p.shelfLifeDays);
+          const seq = String((idx % 9) + 1).padStart(2, "0");
+          const lotNo = `${p.code}-${inDate.replace(/-/g, "").slice(2)}-${seq}`;
+          const qty = p.unit === "kg" ? 50 + (idx % 40) * 5 : 1000 + (idx % 50) * 200;
+          out.push({ zone: line.name, bay: bayNo, pallet, level, lotNo, code: p.code, name: p.name, unit: p.unit, qty, inDate, expiry });
+        }
       }
-    }
+    });
   });
   return out;
 })();
@@ -79,18 +107,17 @@ export const daysToExpiry = (expiry: string, todayStr: string) => {
 export const productColor = (code: string) =>
   RACK_PRODUCTS.find((p) => p.code === code)?.color ?? "#bdbdbd";
 
-// 유효기간 임박 색상(잔여일 기준)
 export const expiryColor = (d: number) => {
-  if (d <= 0) return "#e53935"; // 만료
-  if (d <= 30) return "#fb8c00"; // 임박
-  if (d <= 90) return "#fdd835"; // 주의
-  return "#66bb6a"; // 양호
+  if (d <= 0) return "#e53935";
+  if (d <= 30) return "#fb8c00";
+  if (d <= 90) return "#fdd835";
+  return "#66bb6a";
 };
 
-export const slotKey = (s: Slot) => `${s.zone}-${s.bay}-${s.level}`;
+export const slotKey = (s: Slot) => `${s.zone}-${s.bay}-${s.pallet}-${s.level}`;
 
 // ── CSV ──
-export const SLOT_CSV_HEADERS = ["구역", "적치대", "단", "Lot번호", "품목코드", "품목명", "수량", "단위", "입고일", "유효기간"];
+export const SLOT_CSV_HEADERS = ["라인", "적치대", "파렛트", "단", "Lot번호", "품목코드", "품목명", "수량", "단위", "입고일", "유효기간"];
 
 export function slotsToCsv(slots: Slot[]): string {
   const esc = (v: unknown) => {
@@ -99,13 +126,14 @@ export function slotsToCsv(slots: Slot[]): string {
   };
   const body = slots
     .filter(isOccupied)
-    .map((s) => [s.zone, s.bay, s.level, s.lotNo, s.code, s.name, s.qty, s.unit, s.inDate, s.expiry].map(esc).join(","));
+    .map((s) => [s.zone, s.bay, s.pallet, s.level, s.lotNo, s.code, s.name, s.qty, s.unit, s.inDate, s.expiry].map(esc).join(","));
   return "﻿" + SLOT_CSV_HEADERS.join(",") + "\n" + body.join("\n");
 }
 
 const ALIAS: Record<string, keyof Slot> = {
-  구역: "zone", 창고: "zone", 라인: "zone", zone: "zone",
+  라인: "zone", 구역: "zone", 창고: "zone", zone: "zone", line: "zone",
   적치대: "bay", bay: "bay",
+  파렛트: "pallet", 팔레트: "pallet", 파레트: "pallet", plt: "pallet", pallet: "pallet",
   단: "level", 레벨: "level", level: "level",
   lot번호: "lotNo", lot: "lotNo", lotno: "lotNo",
   품목코드: "code", code: "code",
@@ -136,13 +164,13 @@ export function rowsToSlots(rows: Record<string, unknown>[]): Slot[] {
       if (k) o[k] = v;
     }
     const zone = String(o.zone ?? "").trim();
-    const bay = num(o.bay);
-    const level = num(o.level) || 1;
-    if (!zone || !bay) continue;
+    const b = num(o.bay);
+    if (!zone || !b) continue;
     out.push({
       zone,
-      bay,
-      level,
+      bay: b,
+      pallet: num(o.pallet) || 1,
+      level: num(o.level) || 1,
       lotNo: String(o.lotNo ?? "").trim(),
       code: String(o.code ?? "").trim(),
       name: String(o.name ?? "").trim(),

@@ -5,6 +5,7 @@ import DashboardNav from "@/components/DashboardNav";
 import { useRackSlots } from "@/lib/useRackSlots";
 import {
   LEVELS,
+  LINES,
   RACK_PRODUCTS,
   isOccupied,
   daysToExpiry,
@@ -32,17 +33,9 @@ export default function WarehouseDashboard() {
     setToday(new Date().toISOString().slice(0, 10));
   }, []);
 
-  const zones = useMemo(() => Array.from(new Set(slots.map((s) => s.zone))), [slots]);
-  const baysByZone = useMemo(() => {
-    const m: Record<string, Set<number>> = {};
-    slots.forEach((s) => (m[s.zone] ??= new Set()).add(s.bay));
-    const r: Record<string, number[]> = {};
-    for (const z in m) r[z] = [...m[z]].sort((a, b) => a - b);
-    return r;
-  }, [slots]);
   const lookup = useMemo(() => {
     const m = new Map<string, Slot>();
-    slots.forEach((s) => m.set(`${s.zone}|${s.bay}|${s.level}`, s));
+    slots.forEach((s) => m.set(`${s.zone}|${s.bay}|${s.pallet}|${s.level}`, s));
     return m;
   }, [slots]);
 
@@ -97,7 +90,7 @@ export default function WarehouseDashboard() {
         const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
         parsed = rowsToSlots(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" }));
       }
-      if (!parsed.length) alert("인식된 적치 데이터가 없습니다. 헤더(구역·적치대·단·Lot번호·품목코드·품목명·수량·입고일·유효기간)를 확인해주세요.");
+      if (!parsed.length) alert("인식된 적치 데이터가 없습니다. 헤더(라인·적치대·파렛트·단·Lot번호·품목코드·품목명·수량·입고일·유효기간)를 확인해주세요.");
       else if (confirm(`${parsed.length}건을 불러옵니다. 현재 적치 현황을 교체할까요?`)) {
         setSlots(parsed); setProductFilter("전체"); setQ(""); setSelected(null);
       }
@@ -134,9 +127,9 @@ export default function WarehouseDashboard() {
       <div className="mx-auto max-w-6xl px-5 py-7">
         {/* KPI */}
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <Kpi label="총 슬롯" value={num(stats.total)} unit={`${zones.length}라인 × 4단`} tone="ink" />
-          <Kpi label="적재" value={num(stats.occ)} unit="슬롯" tone="mint" />
-          <Kpi label="빈 슬롯" value={num(stats.empty)} unit="슬롯" tone="bean" />
+          <Kpi label="총 파렛트" value={num(stats.total)} unit={`${LINES.length}라인 · 4단`} tone="ink" />
+          <Kpi label="적재" value={num(stats.occ)} unit="파렛트" tone="mint" />
+          <Kpi label="빈 파렛트" value={num(stats.empty)} unit="파렛트" tone="bean" />
           <Kpi label="적재율" value={`${stats.rate}%`} unit="가동률" tone="bean" />
           <Kpi label="유효기간 임박" value={num(stats.near)} unit="30일 이내" tone="rose" />
         </section>
@@ -175,40 +168,60 @@ export default function WarehouseDashboard() {
         {/* 적치대 맵 + 상세 */}
         <section className="mt-4 grid gap-4 lg:grid-cols-[1fr_280px]">
           <div className="space-y-4">
-            {zones.map((zone) => (
-              <div key={zone} className="rounded-2xl border border-cream-deep bg-white p-4 shadow-sm">
-                <div className="mb-2 text-sm font-extrabold text-coffee">🏭 {zone}</div>
-                <div className="overflow-x-auto pb-1">
-                  <div className="flex gap-2">
-                    {baysByZone[zone].map((bay) => (
-                      <div key={bay} className="shrink-0">
-                        <div className="flex flex-col gap-0.5">
-                          {Array.from({ length: LEVELS }, (_, k) => LEVELS - k).map((level) => {
-                            const s = lookup.get(`${zone}|${bay}|${level}`);
-                            const occ = s && isOccupied(s);
-                            const dim = filterActive && !matchOf(s);
-                            const bg = cellBg(s);
-                            const isSel = selected && s && selected.zone === s.zone && selected.bay === s.bay && selected.level === s.level;
-                            return (
-                              <button
-                                key={level}
-                                onClick={() => setSelected(s ?? null)}
-                                title={occ ? `${zone} ${bay}번 ${level}단 · ${s!.name} · ${s!.lotNo}` : `${zone} ${bay}번 ${level}단 · 빈 칸`}
-                                className={`flex h-7 w-12 items-center justify-center rounded text-[10px] font-bold transition ${occ ? "text-white" : "border border-dashed border-bean/30 bg-cream text-bean/40"} ${dim ? "opacity-25" : ""} ${isSel ? "ring-2 ring-espresso ring-offset-1" : ""}`}
-                                style={bg ? { background: bg } : undefined}
-                              >
-                                {level}단
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <div className="mt-1 text-center text-[10px] font-medium text-bean/60">{String(bay).padStart(2, "0")}</div>
-                      </div>
-                    ))}
+            {LINES.map((line) => {
+              let bayNo = 0;
+              return (
+                <div key={line.name} className="rounded-2xl border border-cream-deep bg-white p-4 shadow-sm">
+                  <div className="mb-2 text-sm font-extrabold text-coffee">🏭 {line.name}</div>
+                  <div className="overflow-x-auto pb-1">
+                    <div className="flex items-stretch gap-1.5">
+                      {line.segs.map((seg, si) => {
+                        if (seg.kind === "aisle") {
+                          return (
+                            <div key={`a${si}`} className="flex w-10 shrink-0 items-center justify-center rounded bg-[repeating-linear-gradient(45deg,#efe6d6,#efe6d6_5px,#fff_5px,#fff_10px)] px-1">
+                              <span className="whitespace-nowrap text-[10px] font-bold tracking-tight text-bean/70 [writing-mode:vertical-rl]">{seg.label} · 통로</span>
+                            </div>
+                          );
+                        }
+                        bayNo++;
+                        const thisBay = bayNo;
+                        return (
+                          <div key={`b${si}`} className="shrink-0 rounded border border-cream-deep/70 bg-cream/30 p-1">
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: seg.pallets }, (_, pi) => pi + 1).map((pallet) => (
+                                <div key={pallet} className="flex flex-col gap-0.5">
+                                  {Array.from({ length: LEVELS }, (_, k) => LEVELS - k).map((level) => {
+                                    const s = lookup.get(`${line.name}|${thisBay}|${pallet}|${level}`);
+                                    const occ = s && isOccupied(s);
+                                    const dim = filterActive && !matchOf(s);
+                                    const bg = cellBg(s);
+                                    const isSel = selected && s && selected.zone === s.zone && selected.bay === s.bay && selected.pallet === s.pallet && selected.level === s.level;
+                                    return (
+                                      <button
+                                        key={level}
+                                        onClick={() => setSelected(s ?? null)}
+                                        title={`${line.name} ${thisBay}번 ${pallet}P ${level}단${occ ? ` · ${s!.name} · ${s!.lotNo}` : " · 빈 칸"}`}
+                                        className={`flex h-6 w-9 items-center justify-center rounded-sm text-[9px] font-bold transition ${occ ? "text-white" : "border border-dashed border-bean/30 bg-white text-bean/30"} ${dim ? "opacity-20" : ""} ${isSel ? "ring-2 ring-espresso ring-offset-1" : ""}`}
+                                        style={bg ? { background: bg } : undefined}
+                                      >
+                                        {level}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-1 text-center text-[10px] font-medium text-bean/60">
+                              {String(thisBay).padStart(2, "0")}<span className="text-bean/40">·{seg.pallets}P</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* 상세 패널 */}
@@ -217,7 +230,7 @@ export default function WarehouseDashboard() {
               <h3 className="text-sm font-bold text-roast">Lot 상세</h3>
               {selected && isOccupied(selected) ? (
                 <div className="mt-3 space-y-2 text-sm">
-                  <Row k="위치" v={`${selected.zone} · ${String(selected.bay).padStart(2, "0")}번 · ${selected.level}단`} />
+                  <Row k="위치" v={`${selected.zone} · ${String(selected.bay).padStart(2, "0")}번 · ${selected.pallet}P · ${selected.level}단`} />
                   <Row k="Lot 번호" v={selected.lotNo} mono />
                   <Row k="제품" v={`${selected.name} (${selected.code})`} />
                   <Row k="수량" v={`${num(selected.qty)} ${selected.unit}`} />
@@ -229,7 +242,7 @@ export default function WarehouseDashboard() {
                   })()}
                 </div>
               ) : selected ? (
-                <p className="mt-3 text-sm text-bean/60">{selected.zone} {String(selected.bay).padStart(2, "0")}번 {selected.level}단 · <b>빈 칸</b></p>
+                <p className="mt-3 text-sm text-bean/60">{selected.zone} {String(selected.bay).padStart(2, "0")}번 {selected.pallet}P {selected.level}단 · <b>빈 칸</b></p>
               ) : (
                 <p className="mt-3 text-sm text-bean/60">맵에서 적치 칸을 누르면 Lot 정보가 표시됩니다.</p>
               )}
@@ -257,8 +270,8 @@ export default function WarehouseDashboard() {
                 {lotList.map((s) => {
                   const d = today && s.expiry ? daysToExpiry(s.expiry, today) : Infinity;
                   return (
-                    <tr key={`${s.zone}-${s.bay}-${s.level}`} onClick={() => setSelected(s)} className="cursor-pointer border-b border-cream-deep/50 last:border-0 hover:bg-cream">
-                      <td className="px-3 py-2 text-xs font-medium text-roast">{s.zone} {String(s.bay).padStart(2, "0")}-{s.level}단</td>
+                    <tr key={`${s.zone}-${s.bay}-${s.pallet}-${s.level}`} onClick={() => setSelected(s)} className="cursor-pointer border-b border-cream-deep/50 last:border-0 hover:bg-cream">
+                      <td className="px-3 py-2 text-xs font-medium text-roast">{s.zone} {String(s.bay).padStart(2, "0")}-{s.pallet}P-{s.level}단</td>
                       <td className="px-3 py-2 font-mono text-xs text-ink">{s.lotNo}</td>
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center gap-1.5">
@@ -285,7 +298,7 @@ export default function WarehouseDashboard() {
 
         <p className="mt-3 text-xs leading-relaxed text-bean/70">
           · 보기 모드(제품별/유효기간/적재)로 맵 색상이 바뀝니다. 제품 필터·Lot 검색 시 해당 칸만 강조됩니다.
-          · 실제 적치 데이터는 <b className="font-semibold text-bean">CSV/엑셀 업로드</b>(구역·적치대·단·Lot번호·품목·수량·입고일·유효기간)로 반영할 수 있습니다.
+          · 적치대 폭 = 파렛트 수(1385mm=1P, 2585mm=2P), <b className="font-semibold text-bean">1S바이패스 = 통로</b>. 실제 적치 데이터는 <b className="font-semibold text-bean">CSV/엑셀 업로드</b>(라인·적치대·파렛트·단·Lot번호·품목·수량·입고일·유효기간)로 반영할 수 있습니다.
         </p>
       </div>
     </main>
