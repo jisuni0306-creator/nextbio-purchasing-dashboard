@@ -115,6 +115,65 @@ export default function PartnersDashboard() {
     URL.revokeObjectURL(url);
   };
 
+  // 선정 평가서 1장 인쇄/PDF 출력
+  const printEval = (p: Partner, e: SupplierEval) => {
+    const w = window.open("", "_blank", "width=900,height=1120");
+    if (!w) return;
+    const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const total = evalTotal(e);
+    const g = gradeOf(total);
+    const info = [
+      ["업체명", p.name], ["대표자명", p.ceo], ["사업자등록번호", p.bizNo],
+      ["소재지", p.address], ["업태/업종", p.bizType], ["취급 품목", p.bizItem],
+      ["평가 일자", e.date], ["평가자", e.evaluator], ["평가 결과", g.grade + "등급"],
+    ].map(([k, v]) => `<tr><td class="lbl">${esc(k)}</td><td>${esc(v) || "&nbsp;"}</td></tr>`).join("");
+    const bands = [
+      ["A", "90-100", "우수 (우선 협력대상)", "합격"],
+      ["B", "80-89", "적합 (일반 협력 대상)", "합격"],
+      ["C", "60-79", "조건부 적합 (개선 필요)", "조건부합격"],
+      ["D", "60 미만", "부적합 (협력불가)", "불합격"],
+    ].map((b) => `<tr class="${b[0] === g.grade ? "hit" : ""}"><td class="c">${b[0]}</td><td class="c">${b[1]}</td><td>${b[2]}</td><td class="c">${b[3]}</td></tr>`).join("");
+    const rows = EVAL_CRITERIA.map((c, i) => {
+      const first = i === 0 || EVAL_CRITERIA[i - 1].category !== c.category;
+      const cnt = EVAL_CRITERIA.filter((x) => x.category === c.category).length;
+      return `<tr>${first ? `<td class="cat" rowspan="${cnt}">${esc(c.category)}</td>` : ""}<td>${esc(c.item)}</td><td class="c">${c.max}</td><td class="c">${e.scores[i] || 0}</td></tr>`;
+    }).join("");
+    w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>공급업체 선정 평가서 - ${esc(p.name)}</title>
+    <style>
+      *{box-sizing:border-box} body{font-family:'Malgun Gothic',system-ui,sans-serif;color:#222;font-size:12px;padding:28px;}
+      h1{text-align:center;font-size:20px;font-weight:800;margin:0 0 18px;}
+      h2{font-size:13px;font-weight:700;margin:18px 0 6px;}
+      table{width:100%;border-collapse:collapse;}
+      td,th{border:1px solid #8a8a8a;padding:6px 8px;}
+      th{background:#ededed;font-weight:600;}
+      .lbl{background:#ededed;font-weight:600;width:170px;text-align:center;}
+      .c{text-align:center;} .cat{background:#f5f5f5;font-weight:600;text-align:center;vertical-align:middle;width:130px;}
+      .hit{background:#cfeee6;font-weight:700;}
+      tfoot td{background:#f5f5f5;font-weight:700;}
+      @media print{body{padding:0}}
+    </style></head><body>
+    <h1>공급업체 선정 평가서</h1>
+    <h2>1. 기본 정보</h2>
+    <table><tbody>${info}</tbody></table>
+    <h2>2. 총점 및 등급</h2>
+    <table>
+      <thead><tr><th style="width:60px">등급</th><th style="width:90px">점수</th><th>처리방법</th><th style="width:110px">판정</th></tr></thead>
+      <tbody>${bands}</tbody>
+    </table>
+    <h2>3. 평가 항목별 기준표</h2>
+    <table>
+      <thead><tr><th style="width:130px">평가 항목</th><th>세부 평가 기준</th><th style="width:60px">배점</th><th style="width:70px">평가 점수</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr><td colspan="3" class="c">총점 (100점 만점)</td><td class="c">${total}</td></tr>
+        <tr><td colspan="3" class="c">평가등급</td><td class="c">${g.grade}</td></tr>
+      </tfoot>
+    </table>
+    <script>window.onload=()=>window.print()</script>
+    </body></html>`);
+    w.document.close();
+  };
+
   // 관리 시트(별도 관리 레이어) — 거래처코드 기준으로 보관, 전산 재업로드와 무관하게 유지
   const [mgmt, setMgmt] = useState<Record<string, PartnerMgmt>>({});
   const [mgmtHydrated, setMgmtHydrated] = useState(false);
@@ -440,10 +499,11 @@ export default function PartnersDashboard() {
                     <td className="px-3 py-2.5 text-center text-xs text-bean">{g ? g.verdict : "—"}</td>
                     <td className="px-3 py-2.5 text-center text-xs text-bean">{e?.date || "—"}</td>
                     <td className="px-3 py-2.5 text-xs text-bean">{e?.evaluator || "—"}</td>
-                    <td className="px-3 py-2.5 text-center">
+                    <td className="px-3 py-2.5 text-center whitespace-nowrap">
                       <button onClick={() => openEval(p)} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${done ? "border border-cream-deep bg-white text-bean hover:bg-cream-deep" : "bg-mint text-white hover:brightness-95"}`}>
                         {done ? "재평가" : "평가하기"}
                       </button>
+                      <button onClick={() => printEval(p, evals[p.code] ?? emptyEval())} className="ml-1 rounded-lg border border-cream-deep bg-white px-2.5 py-1.5 text-xs font-medium text-bean transition hover:bg-cream-deep">🖨 평가서</button>
                     </td>
                   </tr>
                 );
@@ -618,6 +678,7 @@ export default function PartnersDashboard() {
 
               <div className="mt-4 flex justify-end gap-2">
                 <button onClick={() => setEvalTarget(null)} className="rounded-lg border border-cream-deep px-4 py-2 text-sm font-medium text-bean hover:bg-cream-deep">취소</button>
+                <button onClick={() => printEval(evalTarget, evalDraft)} className="rounded-lg border border-cream-deep bg-white px-4 py-2 text-sm font-medium text-bean hover:bg-cream-deep">🖨 평가서 출력</button>
                 <button onClick={saveEval} className="rounded-lg bg-espresso px-4 py-2 text-sm font-bold text-cream hover:bg-roast">평가 저장</button>
               </div>
             </div>
