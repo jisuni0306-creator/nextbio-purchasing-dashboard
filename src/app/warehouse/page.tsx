@@ -19,6 +19,18 @@ import {
 } from "@/lib/racks";
 
 const APPSHEET_KEY = "appsheet-warehouse-url-v1";
+const RELEASE_KEY = "release-log-v1";
+
+interface ReleaseRec {
+  date: string; // 불출날짜
+  code: string; // 품목코드
+  name: string; // 품목명
+  qty: number; // 수량
+  unit: string;
+  lotNo: string; // Lot
+  location: string; // 적치대 번호
+}
+const REL_HEADERS = ["불출날짜", "품목코드", "품목명", "수량", "Lot", "적치대번호"];
 
 type ViewMode = "product" | "expiry" | "occupancy";
 const num = (n: number) => Math.round(n).toLocaleString("ko-KR");
@@ -79,6 +91,69 @@ export default function WarehouseDashboard() {
     } catch {
       alert("클립보드 복사에 실패했습니다. ‘CSV 내보내기’를 이용해주세요.");
     }
+  };
+
+  // 불출 등록
+  const [relOpen, setRelOpen] = useState(false);
+  const emptyRel = { date: "", code: "", name: "", qty: 0, unit: "", lotNo: "", location: "", max: 0 };
+  const [rel, setRel] = useState(emptyRel);
+  const [releaseLog, setReleaseLog] = useState<ReleaseRec[]>([]);
+  const [relHydrated, setRelHydrated] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RELEASE_KEY);
+      if (raw) setReleaseLog(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+    setRelHydrated(true);
+  }, []);
+  useEffect(() => {
+    if (!relHydrated) return;
+    try {
+      localStorage.setItem(RELEASE_KEY, JSON.stringify(releaseLog));
+    } catch {
+      /* ignore */
+    }
+  }, [releaseLog, relHydrated]);
+
+  const occupiedLots = useMemo(() => slots.filter(isOccupied), [slots]);
+  const openRelease = (preset?: Slot) => {
+    if (preset) {
+      setRel({ date: today, code: preset.code, name: preset.name, qty: 0, unit: preset.unit, lotNo: preset.lotNo, location: `${preset.zone}-${String(preset.bay).padStart(2, "0")}-${preset.pallet}P-${preset.level}단`, max: preset.qty });
+    } else {
+      setRel({ ...emptyRel, date: today });
+    }
+    setRelOpen(true);
+  };
+  const pickLot = (lotNo: string) => {
+    const s = occupiedLots.find((x) => x.lotNo === lotNo);
+    if (s) setRel((r) => ({ ...r, lotNo, code: s.code, name: s.name, unit: s.unit, location: `${s.zone}-${String(s.bay).padStart(2, "0")}-${s.pallet}P-${s.level}단`, max: s.qty }));
+    else setRel((r) => ({ ...r, lotNo }));
+  };
+  const saveRelease = () => {
+    if (!rel.lotNo.trim()) { alert("Lot을 입력/선택하세요."); return; }
+    if (!(rel.qty > 0)) { alert("불출 수량을 입력하세요."); return; }
+    // 적치대 현황에서 해당 Lot 차감
+    setSlots((prev) => prev.map((s) => {
+      if (s.lotNo !== rel.lotNo) return s;
+      const remain = s.qty - rel.qty;
+      return remain <= 0
+        ? { ...s, lotNo: "", code: "", name: "", unit: "", qty: 0, inDate: "", expiry: "" }
+        : { ...s, qty: remain };
+    }));
+    setReleaseLog((log) => [{ date: rel.date, code: rel.code, name: rel.name, qty: rel.qty, unit: rel.unit, lotNo: rel.lotNo, location: rel.location }, ...log]);
+    setRelOpen(false);
+    setSelected(null);
+  };
+  const exportReleases = () => {
+    const esc = (v: unknown) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const body = releaseLog.map((r) => [r.date, r.code, r.name, r.qty, r.lotNo, r.location].map(esc).join(","));
+    const csv = "﻿" + REL_HEADERS.join(",") + "\n" + body.join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "불출이력.csv"; a.click();
+    URL.revokeObjectURL(url);
   };
 
   const lookup = useMemo(() => {
@@ -194,6 +269,7 @@ export default function WarehouseDashboard() {
             {productsInUse.map((p) => (<option key={p.code} value={p.code}>{p.name}</option>))}
           </select>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Lot번호·제품 검색" className="min-w-[150px] flex-1 rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs text-roast placeholder:text-bean/50 focus:border-mint focus:outline-none" />
+          <button onClick={() => openRelease()} className="rounded-lg bg-mint px-3 py-2 text-xs font-bold text-white transition hover:brightness-95">📤 불출 등록</button>
           <button onClick={() => fileRef.current?.click()} className="rounded-lg bg-bean px-3 py-2 text-xs font-bold text-cream transition hover:bg-roast">⬆ CSV/엑셀</button>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={onFile} className="hidden" />
           <button onClick={exportCsv} className="rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs font-medium text-bean transition hover:bg-cream-deep">⬇ CSV</button>
@@ -314,6 +390,7 @@ export default function WarehouseDashboard() {
                     const d = daysToExpiry(selected.expiry, today);
                     return <Row k="잔여" v={d < 0 ? `만료 ${-d}일 경과` : `D-${d}`} color={d <= 0 ? "text-rose-600" : d <= 30 ? "text-amber-600" : "text-bio-deep"} />;
                   })()}
+                  <button onClick={() => openRelease(selected)} className="mt-2 w-full rounded-lg bg-mint px-3 py-2 text-xs font-bold text-white transition hover:brightness-95">📤 이 Lot 불출</button>
                 </div>
               ) : selected ? (
                 <p className="mt-3 text-sm text-bean/60">{selected.zone} {String(selected.bay).padStart(2, "0")}번 {selected.pallet}P {selected.level}단 · <b>빈 칸</b></p>
@@ -364,6 +441,46 @@ export default function WarehouseDashboard() {
                 })}
                 {lotList.length === 0 && (
                   <tr><td colSpan={7} className="px-3 py-10 text-center text-sm text-bean/60">조건에 맞는 Lot이 없습니다.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* 불출 이력 */}
+        <section className="mt-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-extrabold text-coffee">불출 이력 {releaseLog.length > 0 && <span className="text-sm font-medium text-bean/70">· {releaseLog.length}건</span>}</h2>
+            <div className="flex gap-2">
+              <button onClick={() => openRelease()} className="rounded-lg bg-mint px-3 py-1.5 text-xs font-bold text-white hover:brightness-95">📤 불출 등록</button>
+              {releaseLog.length > 0 && <button onClick={exportReleases} className="rounded-lg border border-cream-deep bg-white px-3 py-1.5 text-xs font-medium text-bean hover:bg-cream-deep">⬇ CSV</button>}
+            </div>
+          </div>
+          <div className="mt-2 overflow-x-auto rounded-2xl border border-cream-deep bg-white shadow-sm">
+            <table className="w-full min-w-[720px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-cream-deep bg-cream text-xs text-bean">
+                  <th className="px-3 py-2.5 text-center font-semibold">불출날짜</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">품목코드</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">품목명</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">수량</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">Lot</th>
+                  <th className="px-3 py-2.5 text-left font-semibold">적치대 번호</th>
+                </tr>
+              </thead>
+              <tbody>
+                {releaseLog.map((r, i) => (
+                  <tr key={i} className="border-b border-cream-deep/50 last:border-0">
+                    <td className="px-3 py-2 text-center text-xs text-bean">{r.date || "—"}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-bean">{r.code || "—"}</td>
+                    <td className="px-3 py-2 font-semibold text-ink">{r.name || "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-roast">{num(r.qty)} <span className="text-[10px] text-bean/50">{r.unit}</span></td>
+                    <td className="px-3 py-2 font-mono text-xs text-ink">{r.lotNo}</td>
+                    <td className="px-3 py-2 text-xs font-medium text-roast">{r.location || "—"}</td>
+                  </tr>
+                ))}
+                {releaseLog.length === 0 && (
+                  <tr><td colSpan={6} className="px-3 py-8 text-center text-sm text-bean/60">불출 등록 내역이 없습니다. ‘📤 불출 등록’으로 기록하면 적치대 수량이 차감됩니다.</td></tr>
                 )}
               </tbody>
             </table>
@@ -431,6 +548,54 @@ export default function WarehouseDashboard() {
           </div>
         </section>
       </div>
+
+      {/* 불출 등록 모달 */}
+      {relOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-espresso/40 p-4" onClick={() => setRelOpen(false)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-extrabold text-coffee">불출 등록</h3>
+            <p className="mt-0.5 text-xs text-bean/70">Lot을 선택하면 품목·적치대가 자동 입력되고, 저장 시 적치대 수량이 차감됩니다.</p>
+            <datalist id="lot-options">
+              {occupiedLots.map((s) => <option key={`${s.zone}-${s.bay}-${s.pallet}-${s.level}`} value={s.lotNo} />)}
+            </datalist>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="col-span-2 block">
+                <span className="text-xs font-medium text-bean">Lot</span>
+                <input list="lot-options" value={rel.lotNo} onChange={(e) => pickLot(e.target.value)} className="rel-in" placeholder="Lot 선택/입력" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-bean">불출날짜</span>
+                <input type="date" value={rel.date} onChange={(e) => setRel((r) => ({ ...r, date: e.target.value }))} className="rel-in" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-bean">수량{rel.max > 0 && <span className="text-bean/50"> (재고 {num(rel.max)})</span>}</span>
+                <input type="number" min={0} value={rel.qty || ""} onChange={(e) => setRel((r) => ({ ...r, qty: Number(e.target.value) || 0 }))} className="rel-in" placeholder="0" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-bean">품목코드</span>
+                <input value={rel.code} onChange={(e) => setRel((r) => ({ ...r, code: e.target.value }))} className="rel-in" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-bean">품목명</span>
+                <input value={rel.name} onChange={(e) => setRel((r) => ({ ...r, name: e.target.value }))} className="rel-in" />
+              </label>
+              <label className="col-span-2 block">
+                <span className="text-xs font-medium text-bean">적치대 번호</span>
+                <input value={rel.location} onChange={(e) => setRel((r) => ({ ...r, location: e.target.value }))} className="rel-in" placeholder="A라인-03-2P-4단" />
+              </label>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setRelOpen(false)} className="rounded-lg border border-cream-deep px-4 py-2 text-sm font-medium text-bean hover:bg-cream-deep">취소</button>
+              <button onClick={saveRelease} className="rounded-lg bg-mint px-4 py-2 text-sm font-bold text-white hover:brightness-95">불출 저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .rel-in { margin-top:0.25rem; width:100%; border:1px solid var(--color-cream-deep); border-radius:0.5rem; padding:0.45rem 0.6rem; font-size:0.875rem; color:var(--color-roast); background:#fff; }
+        .rel-in:focus { outline:none; border-color:var(--color-mint); }
+      `}</style>
     </main>
   );
 }
