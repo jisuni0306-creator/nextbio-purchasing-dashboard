@@ -27,7 +27,23 @@ export default function WarehouseDashboard() {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Slot | null>(null);
   const [today, setToday] = useState("");
+  const [focusLine, setFocusLine] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const lineStats = useMemo(() => {
+    const m: Record<string, { occ: number; total: number }> = {};
+    slots.forEach((s) => {
+      const r = (m[s.zone] ??= { occ: 0, total: 0 });
+      r.total++;
+      if (isOccupied(s)) r.occ++;
+    });
+    return m;
+  }, [slots]);
+
+  const focusOn = (name: string) => {
+    setFocusLine(name);
+    document.getElementById(`line-${name}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   useEffect(() => {
     setToday(new Date().toISOString().slice(0, 10));
@@ -165,13 +181,33 @@ export default function WarehouseDashboard() {
           {mode === "occupancy" && (<><span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-mint" /> 적재</span><span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded border border-dashed border-bean/40 bg-cream" /> 빈 칸</span></>)}
         </section>
 
+        {/* 창고 배치도 */}
+        <section className="mt-5">
+          <h2 className="text-lg font-extrabold text-coffee">창고 배치도 <span className="text-sm font-medium text-bean/70">· 라인 위치 (누르면 해당 라인으로 이동)</span></h2>
+          <div className="mt-2 rounded-2xl border border-cream-deep bg-white p-4 shadow-sm">
+            <div className="mb-1.5 text-center text-xs font-bold text-bean">▼ 입고</div>
+            <div className="space-y-1.5">
+              {["A라인", "B라인"].map((n) => <LineBar key={n} name={n} stats={lineStats[n]} active={focusLine === n} onClick={() => focusOn(n)} />)}
+            </div>
+            <div className="mt-3 space-y-1.5 border-t border-dashed border-cream-deep pt-3">
+              {["C라인", "D라인"].map((n) => <LineBar key={n} name={n} stats={lineStats[n]} active={focusLine === n} onClick={() => focusOn(n)} />)}
+            </div>
+            <div className="mt-3 flex items-stretch gap-3 border-t border-dashed border-cream-deep pt-3">
+              <div className="flex-1"><LineBar name="E라인" stats={lineStats["E라인"]} active={focusLine === "E라인"} onClick={() => focusOn("E라인")} /></div>
+              <div className="flex w-16 shrink-0 items-center justify-center rounded bg-cream text-[10px] font-bold text-bean/70">출입구</div>
+              <div className="flex-1"><LineBar name="F라인" stats={lineStats["F라인"]} active={focusLine === "F라인"} onClick={() => focusOn("F라인")} /></div>
+            </div>
+            <div className="mt-1.5 text-center text-xs font-bold text-bean">▲ 출고</div>
+          </div>
+        </section>
+
         {/* 적치대 맵 + 상세 */}
         <section className="mt-4 grid gap-4 lg:grid-cols-[1fr_280px]">
           <div className="space-y-4">
             {LINES.map((line) => {
               let bayNo = 0;
               return (
-                <div key={line.name} className="rounded-2xl border border-cream-deep bg-white p-4 shadow-sm">
+                <div key={line.name} id={`line-${line.name}`} className={`scroll-mt-20 rounded-2xl border bg-white p-4 shadow-sm transition ${focusLine === line.name ? "border-mint ring-2 ring-mint/40" : "border-cream-deep"}`}>
                   <div className="mb-2 text-sm font-extrabold text-coffee">🏭 {line.name}</div>
                   <div className="overflow-x-auto pb-1">
                     <div className="flex items-stretch gap-1.5">
@@ -302,6 +338,29 @@ export default function WarehouseDashboard() {
         </p>
       </div>
     </main>
+  );
+}
+
+function LineBar({ name, stats, active, onClick }: { name: string; stats?: { occ: number; total: number }; active: boolean; onClick: () => void }) {
+  const line = LINES.find((l) => l.name === name);
+  if (!line) return null;
+  const pct = stats && stats.total ? Math.round((stats.occ / stats.total) * 100) : 0;
+  return (
+    <button onClick={onClick} className={`flex w-full items-center gap-2 rounded-lg border p-1.5 text-left transition ${active ? "border-mint bg-mint/10" : "border-cream-deep bg-cream/30 hover:bg-cream"}`}>
+      <span className="w-12 shrink-0 text-xs font-extrabold text-coffee">{name}</span>
+      <div className="flex h-6 flex-1 items-stretch gap-0.5">
+        {line.segs.map((seg, i) =>
+          seg.kind === "aisle" ? (
+            <div key={i} title={`${seg.label} · 통로`} className="w-3 shrink-0 rounded-sm bg-[repeating-linear-gradient(45deg,#efe6d6,#efe6d6_3px,#fff_3px,#fff_6px)]" />
+          ) : (
+            <div key={i} style={{ flexGrow: seg.mm }} className="flex items-center justify-center rounded-sm border border-mint/40 bg-mint/20 text-[9px] font-bold text-mint-deep">
+              {seg.pallets}P
+            </div>
+          ),
+        )}
+      </div>
+      <span className="w-9 shrink-0 text-right text-[10px] font-semibold text-bean">{pct}%</span>
+    </button>
   );
 }
 
