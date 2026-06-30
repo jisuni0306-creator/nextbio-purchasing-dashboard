@@ -204,12 +204,20 @@ export const gradeOf = (total: number): EvalGrade =>
 export interface SupplierEval {
   date: string; // 평가 일자
   evaluator: string; // 평가자
+  category: string; // 구분 (부자재/원자재 등)
+  supplyItem: string; // 공급품목 (PET/CAP/생두 등)
+  prevGrade: string; // 전년도 평가결과
+  note: string; // 비고
   scores: number[]; // EVAL_CRITERIA와 같은 순서의 점수
 }
 
 export const emptyEval = (): SupplierEval => ({
   date: "",
   evaluator: "",
+  category: "",
+  supplyItem: "",
+  prevGrade: "",
+  note: "",
   scores: EVAL_CRITERIA.map(() => 0),
 });
 
@@ -217,7 +225,8 @@ export const evalTotal = (e: SupplierEval) =>
   e.scores.reduce((s, v) => s + (Number(v) || 0), 0);
 
 export const EVAL_CSV_HEADERS = [
-  "거래처코드", "업체명", "사업자번호", "평가일자", "평가자", "총점", "등급", "판정",
+  "거래처코드", "업체명", "사업자번호", "구분", "공급품목", "평가일자", "평가자",
+  "총점", "등급", "판정", "전년도평가결과", "비고",
   ...EVAL_CRITERIA.map((c) => `${c.category}-${c.item}(${c.max})`),
 ];
 
@@ -232,7 +241,7 @@ export function evalsToCsv(partners: Partner[], map: Record<string, SupplierEval
       const e = map[p.code];
       const t = evalTotal(e);
       const g = gradeOf(t);
-      return [p.code, p.name, p.bizNo, e.date, e.evaluator, t, g.grade, g.verdict, ...e.scores].map(esc).join(",");
+      return [p.code, p.name, p.bizNo, e.category, e.supplyItem || p.bizItem, e.date, e.evaluator, t, g.grade, g.verdict, e.prevGrade, e.note, ...e.scores].map(esc).join(",");
     });
   return "﻿" + EVAL_CSV_HEADERS.join(",") + "\n" + body.join("\n");
 }

@@ -68,7 +68,7 @@ export default function PartnersDashboard() {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Partner | null>(null);
   const [isNew, setIsNew] = useState(false);
-  const [view, setView] = useState<"info" | "mgmt" | "eval">("info");
+  const [view, setView] = useState<"info" | "mgmt" | "eval" | "plan">("info");
   const fileRef = useRef<HTMLInputElement>(null);
 
   // 공급업체 평가 (선정 평가서)
@@ -95,7 +95,11 @@ export default function PartnersDashboard() {
   }, [evals, evalHydrated]);
   const openEval = (p: Partner) => {
     setEvalTarget(p);
-    setEvalDraft(evals[p.code] ? { ...evals[p.code], scores: [...evals[p.code].scores] } : emptyEval());
+    setEvalDraft(
+      evals[p.code]
+        ? { ...emptyEval(), ...evals[p.code], scores: [...evals[p.code].scores] }
+        : { ...emptyEval(), supplyItem: p.bizItem || "" },
+    );
   };
   const setScore = (i: number, v: number, max: number) =>
     setEvalDraft((d) => {
@@ -168,6 +172,50 @@ export default function PartnersDashboard() {
         <tr><td colspan="3" class="c">총점 (100점 만점)</td><td class="c">${total}</td></tr>
         <tr><td colspan="3" class="c">평가등급</td><td class="c">${g.grade}</td></tr>
       </tfoot>
+    </table>
+    <script>window.onload=()=>window.print()</script>
+    </body></html>`);
+    w.document.close();
+  };
+
+  // 평가 현황(선정 평가 계획서) 인쇄/PDF 출력
+  const printPlan = () => {
+    const w = window.open("", "_blank", "width=1040,height=1200");
+    if (!w) return;
+    const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const evaluated = partners.filter((p) => evals[p.code]);
+    const dates = evaluated.map((p) => evals[p.code].date).filter(Boolean).sort();
+    const year = dates.length ? dates[dates.length - 1].slice(0, 4) : String(new Date().getFullYear());
+    const groups: Record<string, Partner[]> = {};
+    evaluated.forEach((p) => {
+      const c = (evals[p.code].category || "").trim() || "미분류";
+      (groups[c] ??= []).push(p);
+    });
+    const rows = Object.keys(groups).flatMap((cat) =>
+      groups[cat].map((p, idx) => {
+        const e = evals[p.code];
+        const g = gradeOf(evalTotal(e));
+        return `<tr>${idx === 0 ? `<td class="cat" rowspan="${groups[cat].length}">${esc(cat)}</td>` : ""}<td>${esc(p.name)}</td><td class="c">${esc(e.supplyItem || p.bizItem)}</td><td class="c">${esc(g.grade)}</td><td class="c">${esc(e.prevGrade) || "-"}</td><td>${esc(e.note)}</td></tr>`;
+      }),
+    ).join("");
+    w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(year)}년 공급업체 선정 평가 계획서</title>
+    <style>
+      *{box-sizing:border-box} body{font-family:'Malgun Gothic',system-ui,sans-serif;color:#222;font-size:12px;padding:28px;}
+      h1{text-align:center;font-size:20px;font-weight:800;margin:0 0 18px;}
+      h2{font-size:13px;font-weight:700;margin:16px 0 6px;}
+      table{width:100%;border-collapse:collapse;}
+      td,th{border:1px solid #8a8a8a;padding:6px 8px;}
+      th{background:#ededed;font-weight:600;}
+      .c{text-align:center;} .cat{background:#f5f5f5;font-weight:600;text-align:center;vertical-align:middle;}
+      @media print{body{padding:0}}
+    </style></head><body>
+    <h1>(${esc(year)})년 공급업체 선정 평가 계획서</h1>
+    <h2>1. 평가방법</h2>
+    <p>1) 사전심사  2) 정량적·정성적 평가  3) 현장심사 (필요시)</p>
+    <h2>2. 업체 LIST</h2>
+    <table>
+      <thead><tr><th style="width:90px">구분</th><th>업체명</th><th style="width:120px">공급품목</th><th style="width:80px">평가 결과</th><th style="width:90px">전년도 평가결과</th><th>비고</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="6" class="c">평가한 공급업체가 없습니다.</td></tr>'}</tbody>
     </table>
     <script>window.onload=()=>window.print()</script>
     </body></html>`);
@@ -331,6 +379,9 @@ export default function PartnersDashboard() {
             <button onClick={() => setView("eval")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition ${view === "eval" ? "bg-espresso text-cream" : "text-bean hover:text-roast"}`}>
               공급업체 평가 <span className="text-[10px] font-medium opacity-70">선정 평가서</span>
             </button>
+            <button onClick={() => setView("plan")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition ${view === "plan" ? "bg-espresso text-cream" : "text-bean hover:text-roast"}`}>
+              평가 현황 <span className="text-[10px] font-medium opacity-70">계획서</span>
+            </button>
           </div>
           {view === "mgmt" && (
             <button onClick={exportMgmt} className="rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs font-medium text-bean transition hover:bg-cream-deep">⬇ 관리시트 CSV</button>
@@ -338,13 +389,18 @@ export default function PartnersDashboard() {
           {view === "eval" && (
             <button onClick={exportEvals} className="rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs font-medium text-bean transition hover:bg-cream-deep">⬇ 평가결과 CSV</button>
           )}
+          {view === "plan" && (
+            <button onClick={printPlan} className="rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs font-medium text-bean transition hover:bg-cream-deep">🖨 현황 출력</button>
+          )}
         </section>
         <p className="mt-2 text-xs leading-relaxed text-bean/70">
           {view === "info"
             ? "거래처 기본정보는 전산(ERP)에서 받아 ‘CSV/엑셀’로 업로드합니다. 업로드 시 기본정보만 교체되고, 관리 시트 내용은 그대로 유지됩니다."
             : view === "mgmt"
               ? "전산에 없는 자체 관리 항목(등급·주거래·자사담당·결제메모·관리상태 등)을 거래처별로 관리합니다. 거래처코드 기준으로 저장되어 전산 데이터를 다시 받아도 유지됩니다."
-              : `공급업체 선정 평가서(100점 만점) 기준으로 거래처를 평가합니다. 총점 → 등급(A 90~/B 80~/C 60~/D <60) 자동 판정. ‘평가결과 CSV’로 내보내 구글시트·AppSheet 평가 앱과 연동할 수 있습니다.`}
+              : view === "eval"
+                ? "공급업체 선정 평가서(100점 만점) 기준으로 거래처를 평가합니다. 총점 → 등급(A 90~/B 80~/C 60~/D <60) 자동 판정. ‘평가결과 CSV’로 내보내 구글시트·AppSheet 평가 앱과 연동할 수 있습니다."
+                : "평가한 공급업체를 구분(부자재·원자재 등)별로 묶어 평가결과·전년도결과·비고를 한눈에 보는 선정 평가 계획서입니다. ‘현황 출력’으로 인쇄/PDF 저장할 수 있습니다."}
         </p>
 
         {/* Toolbar */}
@@ -516,6 +572,67 @@ export default function PartnersDashboard() {
         </section>
         )}
 
+        {/* 평가 현황 (선정 평가 계획서) */}
+        {view === "plan" && (() => {
+          const evaluated = filtered.filter((p) => evals[p.code]);
+          const dates = evaluated.map((p) => evals[p.code].date).filter(Boolean).sort();
+          const year = dates.length ? dates[dates.length - 1].slice(0, 4) : String(new Date().getFullYear());
+          const groups: Record<string, Partner[]> = {};
+          evaluated.forEach((p) => {
+            const c = (evals[p.code].category || "").trim() || "미분류";
+            (groups[c] ??= []).push(p);
+          });
+          const cats = Object.keys(groups);
+          return (
+            <section className="mt-3 overflow-hidden rounded-2xl border border-cream-deep bg-white shadow-sm">
+              <div className="border-b border-cream-deep bg-cream px-5 py-4">
+                <h3 className="text-center text-lg font-extrabold text-coffee">({year})년 공급업체 선정 평가 계획서</h3>
+              </div>
+              <div className="px-5 py-4">
+                <p className="text-sm font-bold text-roast">1. 평가방법</p>
+                <p className="mt-1 text-sm text-bean">1) 사전심사  2) 정량적·정성적 평가  3) 현장심사 (필요시)</p>
+                <p className="mt-4 text-sm font-bold text-roast">2. 업체 LIST</p>
+                {evaluated.length === 0 ? (
+                  <p className="mt-2 text-sm text-bean/60">아직 평가한 공급업체가 없습니다. ‘공급업체 평가’ 탭에서 평가하면 여기에 구분별로 모입니다.</p>
+                ) : (
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full min-w-[820px] border-collapse text-sm">
+                      <thead>
+                        <tr className="border-y border-cream-deep bg-cream text-xs text-bean">
+                          <th className="border-r border-cream-deep px-3 py-2 text-center font-semibold" style={{ width: 90 }}>구분</th>
+                          <th className="border-r border-cream-deep px-3 py-2 text-left font-semibold">업체명</th>
+                          <th className="border-r border-cream-deep px-3 py-2 text-center font-semibold">공급품목</th>
+                          <th className="border-r border-cream-deep px-3 py-2 text-center font-semibold" style={{ width: 80 }}>평가 결과</th>
+                          <th className="border-r border-cream-deep px-3 py-2 text-center font-semibold" style={{ width: 80 }}>전년도</th>
+                          <th className="px-3 py-2 text-left font-semibold">비고</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cats.flatMap((cat) =>
+                          groups[cat].map((p, idx) => {
+                            const e = evals[p.code];
+                            const g = gradeOf(evalTotal(e));
+                            return (
+                              <tr key={p.code} className="border-b border-cream-deep/50 last:border-0">
+                                {idx === 0 && <td rowSpan={groups[cat].length} className="border-r border-cream-deep/50 bg-cream/40 px-3 py-2 text-center align-middle font-bold text-roast">{cat}</td>}
+                                <td className="border-r border-cream-deep/50 px-3 py-2 font-semibold text-ink">{p.name}</td>
+                                <td className="border-r border-cream-deep/50 px-3 py-2 text-center text-bean">{e.supplyItem || p.bizItem || "—"}</td>
+                                <td className="border-r border-cream-deep/50 px-3 py-2 text-center"><span className={`rounded-full px-2 py-0.5 text-xs font-bold ${GRADE_CHIP[g.grade]}`}>{g.grade}</span></td>
+                                <td className="border-r border-cream-deep/50 px-3 py-2 text-center text-bean">{e.prevGrade || "-"}</td>
+                                <td className="px-3 py-2 text-xs leading-relaxed text-bean">{e.note || ""}</td>
+                              </tr>
+                            );
+                          }),
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </section>
+          );
+        })()}
+
         {/* AppSheet 연동 */}
         <section className="mt-10">
           <h2 className="text-lg font-extrabold text-coffee">AppSheet 거래처 등록 연동</h2>
@@ -629,7 +746,7 @@ export default function PartnersDashboard() {
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <label className="block">
                   <span className="text-xs font-medium text-bean">평가 일자</span>
                   <div className="mt-1"><input type="date" value={evalDraft.date} onChange={(e) => setEvalDraft((d) => ({ ...d, date: e.target.value }))} className="input" /></div>
@@ -637,6 +754,22 @@ export default function PartnersDashboard() {
                 <label className="block">
                   <span className="text-xs font-medium text-bean">평가자</span>
                   <div className="mt-1"><input value={evalDraft.evaluator} onChange={(e) => setEvalDraft((d) => ({ ...d, evaluator: e.target.value }))} className="input" placeholder="평가자명" /></div>
+                </label>
+                <label className="block">
+                  <span className="text-xs font-medium text-bean">구분</span>
+                  <div className="mt-1"><input value={evalDraft.category} onChange={(e) => setEvalDraft((d) => ({ ...d, category: e.target.value }))} className="input" placeholder="부자재 / 원자재 등" /></div>
+                </label>
+                <label className="block">
+                  <span className="text-xs font-medium text-bean">공급품목</span>
+                  <div className="mt-1"><input value={evalDraft.supplyItem} onChange={(e) => setEvalDraft((d) => ({ ...d, supplyItem: e.target.value }))} className="input" placeholder="PET / 생두 등" /></div>
+                </label>
+                <label className="block">
+                  <span className="text-xs font-medium text-bean">전년도 평가결과</span>
+                  <div className="mt-1"><input value={evalDraft.prevGrade} onChange={(e) => setEvalDraft((d) => ({ ...d, prevGrade: e.target.value }))} className="input" placeholder="A / B / - 등" /></div>
+                </label>
+                <label className="block">
+                  <span className="text-xs font-medium text-bean">비고</span>
+                  <div className="mt-1"><input value={evalDraft.note} onChange={(e) => setEvalDraft((d) => ({ ...d, note: e.target.value }))} className="input" placeholder="특이사항" /></div>
                 </label>
               </div>
 
