@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/inventory", label: "적정재고", sub: "모듈 ①" },
   { href: "/purchase-order", label: "자동발주", sub: "모듈 ②" },
+  { href: "/warehouse", label: "적치대", sub: "Lot 현황" },
   { href: "/partners", label: "거래처", sub: "관리대장" },
 ];
 
