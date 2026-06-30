@@ -185,20 +185,24 @@ export default function WarehouseDashboard() {
         <section className="mt-5">
           <h2 className="text-lg font-extrabold text-coffee">창고 배치도 <span className="text-sm font-medium text-bean/70">· 라인 위치 (누르면 해당 라인으로 이동)</span></h2>
           <div className="mt-2 overflow-x-auto rounded-2xl border border-cream-deep bg-white p-4 shadow-sm">
-            <div className="min-w-[720px]">
-              <div className="mb-1.5 text-center text-xs font-bold text-bean">▼ 입고</div>
-              <div className="space-y-1.5">
-                {["A라인", "B라인"].map((n) => <LineBar key={n} name={n} stats={lineStats[n]} active={focusLine === n} onClick={() => focusOn(n)} />)}
-              </div>
-              <div className="mt-3 space-y-1.5 border-t border-dashed border-cream-deep pt-3">
-                {["C라인", "D라인"].map((n) => <LineBar key={n} name={n} stats={lineStats[n]} active={focusLine === n} onClick={() => focusOn(n)} />)}
-              </div>
-              <div className="mt-3 flex items-stretch gap-3 border-t border-dashed border-cream-deep pt-3">
+            <div className="min-w-[760px]">
+              <div className="text-center text-xs font-bold text-bean">▼ 입고</div>
+              <GapDim mm={3140} />
+              <LineBar name="A라인" stats={lineStats["A라인"]} active={focusLine === "A라인"} onClick={() => focusOn("A라인")} />
+              <GapDim mm={200} small />
+              <LineBar name="B라인" stats={lineStats["B라인"]} active={focusLine === "B라인"} onClick={() => focusOn("B라인")} />
+              <GapDim mm={3000} />
+              <LineBar name="C라인" stats={lineStats["C라인"]} active={focusLine === "C라인"} onClick={() => focusOn("C라인")} />
+              <GapDim mm={200} small />
+              <LineBar name="D라인" stats={lineStats["D라인"]} active={focusLine === "D라인"} onClick={() => focusOn("D라인")} />
+              <GapDim mm={3050} />
+              <div className="flex items-stretch gap-3">
                 <div className="flex-1"><LineBar name="E라인" stats={lineStats["E라인"]} active={focusLine === "E라인"} onClick={() => focusOn("E라인")} align="left" /></div>
                 <div className="flex w-16 shrink-0 flex-col items-center justify-center rounded bg-cream text-center text-[10px] font-bold leading-tight text-bean/70">↑↓<br />출입구</div>
                 <div className="flex-1"><LineBar name="F라인" stats={lineStats["F라인"]} active={focusLine === "F라인"} onClick={() => focusOn("F라인")} align="right" /></div>
               </div>
-              <div className="mt-1.5 text-center text-xs font-bold text-bean">▲ 출고</div>
+              <div className="mt-1 text-center text-xs font-bold text-bean">▲ 출고</div>
+              <p className="mt-2 text-right text-[10px] text-bean/50">치수(mm): 적치대 폭 2585=2P · 1385=1P · 라인 쌍 간격 200 · 구획 간격 3000/3050 · 상단 3140 · 전체 높이 14740</p>
             </div>
           </div>
         </section>
@@ -250,7 +254,7 @@ export default function WarehouseDashboard() {
                               ))}
                             </div>
                             <div className="mt-1 text-center text-[10px] font-medium text-bean/60">
-                              {String(thisBay).padStart(2, "0")}<span className="text-bean/40">·{seg.pallets}P</span>
+                              {String(thisBay).padStart(2, "0")} · {seg.mm}<span className="text-bean/40">·{seg.pallets}P</span>
                             </div>
                           </div>
                         );
@@ -343,10 +347,21 @@ export default function WarehouseDashboard() {
   );
 }
 
-function BayCell({ pallets }: { pallets: number }) {
+function GapDim({ mm, small }: { mm: number; small?: boolean }) {
   return (
-    <div className={`flex h-6 shrink-0 items-center justify-center rounded-sm border border-mint/40 bg-mint/20 text-[9px] font-bold text-mint-deep ${pallets === 2 ? "w-14" : "w-7"}`}>
-      {pallets}P
+    <div className={`flex items-center justify-center gap-2 ${small ? "py-0.5" : "py-1"} text-[10px] text-bean/55`}>
+      <span className="h-px w-10 bg-bean/25" />
+      <span className="font-medium">↕ {mm}</span>
+      <span className="h-px w-10 bg-bean/25" />
+    </div>
+  );
+}
+
+function BayCell({ mm, pallets }: { mm: number; pallets: number }) {
+  return (
+    <div className={`flex h-8 shrink-0 flex-col items-center justify-center rounded-sm border border-mint/40 bg-mint/20 leading-none ${pallets === 2 ? "w-16" : "w-10"}`}>
+      <span className="text-[10px] font-bold text-mint-deep">{mm}</span>
+      <span className="text-[8px] text-mint-deep/70">{pallets}P</span>
     </div>
   );
 }
@@ -359,7 +374,7 @@ function LineBar({ name, stats, active, onClick, align = "left" }: { name: strin
   const hasAisle = ai >= 0;
   const left = hasAisle ? line.segs.slice(0, ai) : line.segs;
   const right = hasAisle ? line.segs.slice(ai + 1) : [];
-  const cell = (s: typeof line.segs[number], i: number) => (s.kind === "bay" ? <BayCell key={i} pallets={s.pallets} /> : null);
+  const cell = (s: typeof line.segs[number], i: number) => (s.kind === "bay" ? <BayCell key={i} mm={s.mm} pallets={s.pallets} /> : null);
   return (
     <button onClick={onClick} className={`flex w-full items-center gap-2 rounded-lg border p-1.5 text-left transition ${active ? "border-mint bg-mint/10" : "border-cream-deep bg-cream/30 hover:bg-cream"}`}>
       <span className="w-12 shrink-0 text-xs font-extrabold text-coffee">{name}</span>
@@ -367,7 +382,7 @@ function LineBar({ name, stats, active, onClick, align = "left" }: { name: strin
         // 통로를 가운데 고정 컬럼에 두어 라인 간 1S바이패스가 세로로 일자 정렬
         <div className="grid flex-1 grid-cols-[1fr_auto_1fr] items-center gap-1">
           <div className="flex justify-end gap-0.5">{left.map(cell)}</div>
-          <div title="1S바이패스 · 통로" className="h-6 w-3 rounded-sm bg-[repeating-linear-gradient(45deg,#efe6d6,#efe6d6_3px,#fff_3px,#fff_6px)]" />
+          <div title="1S바이패스 · 통로" className="h-8 w-3 rounded-sm bg-[repeating-linear-gradient(45deg,#efe6d6,#efe6d6_3px,#fff_3px,#fff_6px)]" />
           <div className="flex justify-start gap-0.5">{right.map(cell)}</div>
         </div>
       ) : (
