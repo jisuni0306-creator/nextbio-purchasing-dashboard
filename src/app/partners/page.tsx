@@ -15,11 +15,26 @@ import {
   MGMT_STATUSES,
   EMPTY_MGMT,
   mgmtToCsv,
+  EVAL_CRITERIA,
+  EVAL_MAX_TOTAL,
+  gradeOf,
+  emptyEval,
+  evalTotal,
+  evalsToCsv,
   type Partner,
   type PartnerType,
   type PartnerStatus,
   type PartnerMgmt,
+  type SupplierEval,
 } from "@/lib/partners";
+
+const EVAL_KEY = "supplier-eval-v1";
+const GRADE_CHIP: Record<string, string> = {
+  A: "bg-bio/20 text-bio-deep",
+  B: "bg-mint/20 text-mint-deep",
+  C: "bg-amber-100 text-amber-800",
+  D: "bg-rose-100 text-rose-700",
+};
 
 const MGMT_KEY = "partner-mgmt-v1";
 const MGMT_STATUS_CHIP: Record<string, string> = {
@@ -53,8 +68,52 @@ export default function PartnersDashboard() {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Partner | null>(null);
   const [isNew, setIsNew] = useState(false);
-  const [view, setView] = useState<"info" | "mgmt">("info");
+  const [view, setView] = useState<"info" | "mgmt" | "eval">("info");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // 공급업체 평가 (선정 평가서)
+  const [evals, setEvals] = useState<Record<string, SupplierEval>>({});
+  const [evalHydrated, setEvalHydrated] = useState(false);
+  const [evalTarget, setEvalTarget] = useState<Partner | null>(null);
+  const [evalDraft, setEvalDraft] = useState<SupplierEval>(emptyEval());
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(EVAL_KEY);
+      if (raw) setEvals(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+    setEvalHydrated(true);
+  }, []);
+  useEffect(() => {
+    if (!evalHydrated) return;
+    try {
+      localStorage.setItem(EVAL_KEY, JSON.stringify(evals));
+    } catch {
+      /* ignore */
+    }
+  }, [evals, evalHydrated]);
+  const openEval = (p: Partner) => {
+    setEvalTarget(p);
+    setEvalDraft(evals[p.code] ? { ...evals[p.code], scores: [...evals[p.code].scores] } : emptyEval());
+  };
+  const setScore = (i: number, v: number, max: number) =>
+    setEvalDraft((d) => {
+      const scores = [...d.scores];
+      scores[i] = Math.max(0, Math.min(max, Math.round(v) || 0));
+      return { ...d, scores };
+    });
+  const saveEval = () => {
+    if (!evalTarget) return;
+    setEvals((prev) => ({ ...prev, [evalTarget.code]: evalDraft }));
+    setEvalTarget(null);
+  };
+  const exportEvals = () => {
+    const url = URL.createObjectURL(new Blob([evalsToCsv(partners, evals)], { type: "text/csv;charset=utf-8;" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "공급업체_평가결과.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // 관리 시트(별도 관리 레이어) — 거래처코드 기준으로 보관, 전산 재업로드와 무관하게 유지
   const [mgmt, setMgmt] = useState<Record<string, PartnerMgmt>>({});
@@ -203,22 +262,30 @@ export default function PartnersDashboard() {
 
         {/* 보기 전환 탭 */}
         <section className="mt-6 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex rounded-xl border border-cream-deep bg-white p-1">
+          <div className="flex flex-wrap rounded-xl border border-cream-deep bg-white p-1">
             <button onClick={() => setView("info")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition ${view === "info" ? "bg-espresso text-cream" : "text-bean hover:text-roast"}`}>
               거래처 정보 <span className="text-[10px] font-medium opacity-70">전산</span>
             </button>
             <button onClick={() => setView("mgmt")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition ${view === "mgmt" ? "bg-mint text-white" : "text-bean hover:text-roast"}`}>
               관리 시트 <span className="text-[10px] font-medium opacity-70">자체</span>
             </button>
+            <button onClick={() => setView("eval")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition ${view === "eval" ? "bg-espresso text-cream" : "text-bean hover:text-roast"}`}>
+              공급업체 평가 <span className="text-[10px] font-medium opacity-70">선정 평가서</span>
+            </button>
           </div>
           {view === "mgmt" && (
             <button onClick={exportMgmt} className="rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs font-medium text-bean transition hover:bg-cream-deep">⬇ 관리시트 CSV</button>
+          )}
+          {view === "eval" && (
+            <button onClick={exportEvals} className="rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs font-medium text-bean transition hover:bg-cream-deep">⬇ 평가결과 CSV</button>
           )}
         </section>
         <p className="mt-2 text-xs leading-relaxed text-bean/70">
           {view === "info"
             ? "거래처 기본정보는 전산(ERP)에서 받아 ‘CSV/엑셀’로 업로드합니다. 업로드 시 기본정보만 교체되고, 관리 시트 내용은 그대로 유지됩니다."
-            : "전산에 없는 자체 관리 항목(등급·주거래·자사담당·결제메모·관리상태 등)을 거래처별로 관리합니다. 거래처코드 기준으로 저장되어 전산 데이터를 다시 받아도 유지됩니다."}
+            : view === "mgmt"
+              ? "전산에 없는 자체 관리 항목(등급·주거래·자사담당·결제메모·관리상태 등)을 거래처별로 관리합니다. 거래처코드 기준으로 저장되어 전산 데이터를 다시 받아도 유지됩니다."
+              : `공급업체 선정 평가서(100점 만점) 기준으로 거래처를 평가합니다. 총점 → 등급(A 90~/B 80~/C 60~/D <60) 자동 판정. ‘평가결과 CSV’로 내보내 구글시트·AppSheet 평가 앱과 연동할 수 있습니다.`}
         </p>
 
         {/* Toolbar */}
@@ -341,6 +408,54 @@ export default function PartnersDashboard() {
         </section>
         )}
 
+        {/* 공급업체 평가 요약 */}
+        {view === "eval" && (
+        <section className="mt-3 overflow-x-auto rounded-2xl border border-cream-deep bg-white shadow-sm">
+          <table className="w-full min-w-[820px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-cream-deep bg-cream text-xs text-bean">
+                <th className="px-3 py-2.5 text-left font-semibold">공급업체</th>
+                <th className="px-3 py-2.5 text-center font-semibold">총점</th>
+                <th className="px-3 py-2.5 text-center font-semibold">등급</th>
+                <th className="px-3 py-2.5 text-center font-semibold">판정</th>
+                <th className="px-3 py-2.5 text-center font-semibold">평가일자</th>
+                <th className="px-3 py-2.5 text-left font-semibold">평가자</th>
+                <th className="px-3 py-2.5 text-center font-semibold"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p) => {
+                const e = evals[p.code];
+                const done = !!e;
+                const t = done ? evalTotal(e) : 0;
+                const g = done ? gradeOf(t) : null;
+                return (
+                  <tr key={p.code} className="border-b border-cream-deep/60 last:border-0">
+                    <td className="px-3 py-2.5">
+                      <div className="font-bold text-ink">{p.name}</div>
+                      <div className="text-[11px] text-bean/60">{p.code}{p.bizNo ? ` · ${p.bizNo}` : ""}</div>
+                    </td>
+                    <td className="px-3 py-2.5 text-center font-bold tabular-nums text-roast">{done ? `${t} / ${EVAL_MAX_TOTAL}` : <span className="text-bean/40">미평가</span>}</td>
+                    <td className="px-3 py-2.5 text-center">{g ? <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${GRADE_CHIP[g.grade]}`}>{g.grade}</span> : <span className="text-bean/40">—</span>}</td>
+                    <td className="px-3 py-2.5 text-center text-xs text-bean">{g ? g.verdict : "—"}</td>
+                    <td className="px-3 py-2.5 text-center text-xs text-bean">{e?.date || "—"}</td>
+                    <td className="px-3 py-2.5 text-xs text-bean">{e?.evaluator || "—"}</td>
+                    <td className="px-3 py-2.5 text-center">
+                      <button onClick={() => openEval(p)} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${done ? "border border-cream-deep bg-white text-bean hover:bg-cream-deep" : "bg-mint text-white hover:brightness-95"}`}>
+                        {done ? "재평가" : "평가하기"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr><td colSpan={7} className="px-3 py-10 text-center text-sm text-bean/60">조건에 맞는 거래처가 없습니다.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+        )}
+
         {/* AppSheet 연동 */}
         <section className="mt-10">
           <h2 className="text-lg font-extrabold text-coffee">AppSheet 거래처 등록 연동</h2>
@@ -435,6 +550,80 @@ export default function PartnersDashboard() {
           </div>
         </div>
       )}
+
+      {/* 공급업체 평가 모달 */}
+      {evalTarget && (() => {
+        const total = evalTotal(evalDraft);
+        const g = gradeOf(total);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4" onClick={() => setEvalTarget(null)}>
+            <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-extrabold text-coffee">공급업체 선정 평가서</h3>
+                  <p className="mt-0.5 text-xs text-bean/70">{evalTarget.name} · {evalTarget.bizNo || "사업자번호 미등록"} · {evalTarget.bizItem || evalTarget.type}</p>
+                </div>
+                <div className={`shrink-0 rounded-xl px-4 py-2 text-center ${GRADE_CHIP[g.grade]}`}>
+                  <div className="text-2xl font-extrabold tabular-nums">{total}<span className="text-sm font-semibold">/{EVAL_MAX_TOTAL}</span></div>
+                  <div className="text-xs font-bold">{g.grade}등급 · {g.verdict}</div>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-xs font-medium text-bean">평가 일자</span>
+                  <div className="mt-1"><input type="date" value={evalDraft.date} onChange={(e) => setEvalDraft((d) => ({ ...d, date: e.target.value }))} className="input" /></div>
+                </label>
+                <label className="block">
+                  <span className="text-xs font-medium text-bean">평가자</span>
+                  <div className="mt-1"><input value={evalDraft.evaluator} onChange={(e) => setEvalDraft((d) => ({ ...d, evaluator: e.target.value }))} className="input" placeholder="평가자명" /></div>
+                </label>
+              </div>
+
+              <div className="mt-4 overflow-hidden rounded-xl border border-cream-deep">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-cream-deep bg-cream text-xs text-bean">
+                      <th className="px-3 py-2 text-left font-semibold">평가 항목</th>
+                      <th className="px-3 py-2 text-left font-semibold">세부 평가 기준</th>
+                      <th className="px-2 py-2 text-center font-semibold">배점</th>
+                      <th className="px-2 py-2 text-center font-semibold">점수</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {EVAL_CRITERIA.map((c, i) => {
+                      const firstOfCat = i === 0 || EVAL_CRITERIA[i - 1].category !== c.category;
+                      const catCount = EVAL_CRITERIA.filter((x) => x.category === c.category).length;
+                      return (
+                        <tr key={i} className="border-b border-cream-deep/50 last:border-0">
+                          {firstOfCat && <td rowSpan={catCount} className="border-r border-cream-deep/50 bg-cream/40 px-3 py-2 align-middle text-xs font-bold text-roast">{c.category}</td>}
+                          <td className="px-3 py-2 text-xs text-ink">{c.item}</td>
+                          <td className="px-2 py-2 text-center text-xs text-bean">{c.max}</td>
+                          <td className="px-2 py-2 text-center">
+                            <input type="number" min={0} max={c.max} value={evalDraft.scores[i]} onChange={(e) => setScore(i, Number(e.target.value), c.max)} className="w-16 rounded border border-cream-deep px-1.5 py-1 text-center text-sm font-bold text-ink focus:border-mint focus:outline-none" />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-mint/10 font-bold text-roast">
+                      <td colSpan={2} className="px-3 py-2 text-right">총점 (100점 만점)</td>
+                      <td className="px-2 py-2 text-center">{EVAL_MAX_TOTAL}</td>
+                      <td className="px-2 py-2 text-center text-mint-deep">{total}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button onClick={() => setEvalTarget(null)} className="rounded-lg border border-cream-deep px-4 py-2 text-sm font-medium text-bean hover:bg-cream-deep">취소</button>
+                <button onClick={saveEval} className="rounded-lg bg-espresso px-4 py-2 text-sm font-bold text-cream hover:bg-roast">평가 저장</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <style>{`
         .input { width:100%; border:1px solid var(--color-cream-deep); border-radius:0.5rem; padding:0.45rem 0.6rem; font-size:0.875rem; color:var(--color-roast); background:#fff; }

@@ -152,3 +152,87 @@ export function mgmtToCsv(partners: Partner[], map: Record<string, PartnerMgmt>)
   });
   return "﻿" + MGMT_CSV_HEADERS.join(",") + "\n" + body.join("\n");
 }
+
+// ── 공급업체 선정 평가서 (평가 항목별 기준표, 100점 만점) ──
+export interface EvalCriterion {
+  category: string; // 평가 항목
+  item: string; // 세부 평가 기준
+  max: number; // 배점
+}
+
+export const EVAL_CRITERIA: EvalCriterion[] = [
+  { category: "신뢰성", item: "사업자 등록 여부 및 연혁", max: 7 },
+  { category: "신뢰성", item: "재무 상태 및 신용 등급", max: 7 },
+  { category: "신뢰성", item: "법적 분쟁 유무", max: 6 },
+  { category: "커뮤니케이션", item: "응대 속도", max: 8 },
+  { category: "커뮤니케이션", item: "정확하고 명확한 의사소통", max: 7 },
+  { category: "전문성 및 기술력", item: "업계 이해도", max: 7 },
+  { category: "전문성 및 기술력", item: "기술 보유 수준", max: 7 },
+  { category: "전문성 및 기술력", item: "관련 인증 및 특허 보유", max: 6 },
+  { category: "납기 준수", item: "계약 이행력", max: 8 },
+  { category: "납기 준수", item: "납기 일정 준수율", max: 7 },
+  { category: "품질 관리", item: "제품/서비스 품질 수준", max: 6 },
+  { category: "품질 관리", item: "품질 개선 노력", max: 5 },
+  { category: "품질 관리", item: "클레임 및 불량률", max: 4 },
+  { category: "가격 경쟁력", item: "단가의 경쟁력", max: 4 },
+  { category: "가격 경쟁력", item: "가격 협상 태도", max: 3 },
+  { category: "가격 경쟁력", item: "비용 대비 효율성", max: 3 },
+  { category: "지속 가능성 및 윤리성", item: "친환경 경영 실천", max: 2 },
+  { category: "지속 가능성 및 윤리성", item: "ESG 정책 존재 여부", max: 2 },
+  { category: "지속 가능성 및 윤리성", item: "윤리적 경영 및 사회적 책임", max: 1 },
+];
+
+export const EVAL_MAX_TOTAL = EVAL_CRITERIA.reduce((s, c) => s + c.max, 0); // 100
+
+export interface EvalGrade {
+  grade: string;
+  min: number;
+  handling: string;
+  verdict: string;
+}
+
+export const EVAL_GRADES: EvalGrade[] = [
+  { grade: "A", min: 90, handling: "우수 (우선 협력대상)", verdict: "합격" },
+  { grade: "B", min: 80, handling: "적합 (일반 협력 대상)", verdict: "합격" },
+  { grade: "C", min: 60, handling: "조건부 적합 (개선 필요)", verdict: "조건부합격" },
+  { grade: "D", min: 0, handling: "부적합 (협력불가)", verdict: "불합격" },
+];
+
+export const gradeOf = (total: number): EvalGrade =>
+  EVAL_GRADES.find((g) => total >= g.min) ?? EVAL_GRADES[EVAL_GRADES.length - 1];
+
+export interface SupplierEval {
+  date: string; // 평가 일자
+  evaluator: string; // 평가자
+  scores: number[]; // EVAL_CRITERIA와 같은 순서의 점수
+}
+
+export const emptyEval = (): SupplierEval => ({
+  date: "",
+  evaluator: "",
+  scores: EVAL_CRITERIA.map(() => 0),
+});
+
+export const evalTotal = (e: SupplierEval) =>
+  e.scores.reduce((s, v) => s + (Number(v) || 0), 0);
+
+export const EVAL_CSV_HEADERS = [
+  "거래처코드", "업체명", "사업자번호", "평가일자", "평가자", "총점", "등급", "판정",
+  ...EVAL_CRITERIA.map((c) => `${c.category}-${c.item}(${c.max})`),
+];
+
+export function evalsToCsv(partners: Partner[], map: Record<string, SupplierEval>): string {
+  const esc = (v: unknown) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const body = partners
+    .filter((p) => map[p.code])
+    .map((p) => {
+      const e = map[p.code];
+      const t = evalTotal(e);
+      const g = gradeOf(t);
+      return [p.code, p.name, p.bizNo, e.date, e.evaluator, t, g.grade, g.verdict, ...e.scores].map(esc).join(",");
+    });
+  return "﻿" + EVAL_CSV_HEADERS.join(",") + "\n" + body.join("\n");
+}
