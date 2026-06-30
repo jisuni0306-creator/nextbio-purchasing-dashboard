@@ -14,8 +14,11 @@ import {
   slotsToCsv,
   parseSlotCsv,
   rowsToSlots,
+  SLOT_CSV_HEADERS,
   type Slot,
 } from "@/lib/racks";
+
+const APPSHEET_KEY = "appsheet-warehouse-url-v1";
 
 type ViewMode = "product" | "expiry" | "occupancy";
 const num = (n: number) => Math.round(n).toLocaleString("ko-KR");
@@ -48,6 +51,35 @@ export default function WarehouseDashboard() {
   useEffect(() => {
     setToday(new Date().toISOString().slice(0, 10));
   }, []);
+
+  // AppSheet 입고 등록 앱 임베드 URL
+  const [appUrl, setAppUrl] = useState("");
+  const [appUrlInput, setAppUrlInput] = useState("");
+  useEffect(() => {
+    try {
+      const u = localStorage.getItem(APPSHEET_KEY) || "";
+      setAppUrl(u);
+      setAppUrlInput(u);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const saveAppUrl = () => {
+    const u = appUrlInput.trim();
+    setAppUrl(u);
+    try { localStorage.setItem(APPSHEET_KEY, u); } catch { /* ignore */ }
+  };
+  const copyForSheet = async () => {
+    const rows = slots.filter(isOccupied);
+    const line = (s: Slot) => [s.zone, s.bay, s.pallet, s.level, s.lotNo, s.code, s.name, s.qty, s.unit, s.inDate, s.expiry].join("\t");
+    const tsv = [SLOT_CSV_HEADERS.join("\t"), ...rows.map(line)].join("\n");
+    try {
+      await navigator.clipboard.writeText(tsv);
+      alert("구글시트용 데이터(헤더 포함)를 복사했습니다.\n새 구글시트 A1 셀에 붙여넣기(Ctrl+V) 하세요.");
+    } catch {
+      alert("클립보드 복사에 실패했습니다. ‘CSV 내보내기’를 이용해주세요.");
+    }
+  };
 
   const lookup = useMemo(() => {
     const m = new Map<string, Slot>();
@@ -342,6 +374,62 @@ export default function WarehouseDashboard() {
           · 보기 모드(제품별/유효기간/적재)로 맵 색상이 바뀝니다. 제품 필터·Lot 검색 시 해당 칸만 강조됩니다.
           · 적치대 폭 = 파렛트 수(1385mm=1P, 2585mm=2P), <b className="font-semibold text-bean">1S바이패스 = 통로</b>. 실제 적치 데이터는 <b className="font-semibold text-bean">CSV/엑셀 업로드</b>(라인·적치대·파렛트·단·Lot번호·품목·수량·입고일·유효기간)로 반영할 수 있습니다.
         </p>
+
+        {/* AppSheet 입고 등록 연동 */}
+        <section className="mt-10">
+          <h2 className="text-lg font-extrabold text-coffee">AppSheet 입고 등록 연동</h2>
+          <p className="mt-1 text-sm text-bean/80">입고 시 <b className="font-semibold text-roast">Lot번호와 적치대 위치(라인·적치대·파렛트·단)</b>를 AppSheet 폼으로 등록하면 구글시트(창고 적치 마스터)에 저장되고, 이 현황과 동일한 형식으로 관리됩니다.</p>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-cream-deep bg-white p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-roast">연동 절차</h3>
+              <ol className="mt-3 space-y-3">
+                {[
+                  ["적치 데이터를 구글시트로", "아래 ‘구글시트용 복사’를 눌러 헤더(라인·적치대·파렛트·단·Lot번호·품목·수량·입고일·유효기간)와 함께 복사한 뒤, 새 구글시트 A1에 붙여넣습니다. 이 시트가 창고 적치 마스터가 됩니다."],
+                  ["AppSheet 앱 생성", "appsheet.com → Create → App → ‘Start with existing data’ → 위 구글시트를 선택하면 적치 등록 앱이 자동 생성됩니다."],
+                  ["입고 등록 폼 사용", "입고 시 폼에서 Lot번호와 적치대 위치(라인·적치대·파렛트·단), 품목·수량·입고일·유효기간을 입력하면 구글시트에 한 행씩 저장됩니다."],
+                  ["이 화면에 임베드", "AppSheet 앱의 공유(Share) 링크를 복사해 아래에 붙여넣으면, 이 대시보드 안에서 바로 입고 등록할 수 있습니다."],
+                ].map(([t, d], i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-espresso text-xs font-bold text-cream">{i + 1}</span>
+                    <div>
+                      <p className="text-sm font-bold text-ink">{t}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-bean/80">{d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button onClick={copyForSheet} className="rounded-lg bg-bean px-3 py-2 text-xs font-bold text-cream hover:bg-roast">📋 구글시트용 복사(헤더 포함)</button>
+                <button onClick={exportCsv} className="rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs font-medium text-bean hover:bg-cream-deep">⬇ CSV 내보내기</button>
+                <a href="https://www.appsheet.com/start" target="_blank" rel="noreferrer" className="rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs font-medium text-bean hover:bg-cream-deep">↗ AppSheet 열기</a>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-cream-deep bg-white p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-roast">AppSheet 입고 등록 앱 임베드</h3>
+              <div className="mt-3 flex gap-2">
+                <input value={appUrlInput} onChange={(e) => setAppUrlInput(e.target.value)} placeholder="https://www.appsheet.com/start/앱ID  (앱 공유 링크)" className="min-w-0 flex-1 rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs text-roast placeholder:text-bean/50 focus:border-mint focus:outline-none" />
+                <button onClick={saveAppUrl} className="shrink-0 rounded-lg bg-espresso px-3 py-2 text-xs font-bold text-cream hover:bg-roast">임베드</button>
+                {appUrl && (
+                  <button onClick={() => { setAppUrl(""); setAppUrlInput(""); try { localStorage.removeItem(APPSHEET_KEY); } catch {} }} className="shrink-0 rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs font-medium text-bean hover:bg-cream-deep">해제</button>
+                )}
+              </div>
+              <div className="mt-3 overflow-hidden rounded-xl border border-cream-deep bg-cream">
+                {appUrl ? (
+                  <iframe src={appUrl} title="AppSheet 입고 등록" className="h-[520px] w-full" />
+                ) : (
+                  <div className="flex h-[520px] flex-col items-center justify-center gap-2 p-6 text-center">
+                    <span className="text-3xl">📥</span>
+                    <p className="text-sm font-bold text-bean">AppSheet 앱 링크를 붙여넣으면</p>
+                    <p className="text-xs text-bean/70">여기에서 입고 등록 폼(Lot·적치대 입력)이 바로 열립니다.</p>
+                  </div>
+                )}
+              </div>
+              <p className="mt-2 text-[11px] text-bean/60">※ 임베드가 빈 화면이면 AppSheet 앱의 공유 설정(Users/Security)에서 접근 권한을 확인하세요. 등록 후 ‘CSV/엑셀 업로드’로 이 현황에 반영할 수 있습니다.</p>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );
