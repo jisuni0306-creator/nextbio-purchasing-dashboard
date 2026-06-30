@@ -11,10 +11,23 @@ import {
   partnersToCsv,
   parsePartnerCsv,
   rowsToPartners,
+  MGMT_GRADES,
+  MGMT_STATUSES,
+  EMPTY_MGMT,
+  mgmtToCsv,
   type Partner,
   type PartnerType,
   type PartnerStatus,
+  type PartnerMgmt,
 } from "@/lib/partners";
+
+const MGMT_KEY = "partner-mgmt-v1";
+const MGMT_STATUS_CHIP: Record<string, string> = {
+  정상: "bg-bio/15 text-bio-deep",
+  주의: "bg-amber-100 text-amber-800",
+  검토: "bg-mint/20 text-mint-deep",
+  중단: "bg-rose-100 text-rose-700",
+};
 
 const TYPE_CHIP: Record<PartnerType, string> = {
   매입처: "bg-mint/25 text-roast",
@@ -40,7 +53,38 @@ export default function PartnersDashboard() {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Partner | null>(null);
   const [isNew, setIsNew] = useState(false);
+  const [view, setView] = useState<"info" | "mgmt">("info");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // 관리 시트(별도 관리 레이어) — 거래처코드 기준으로 보관, 전산 재업로드와 무관하게 유지
+  const [mgmt, setMgmt] = useState<Record<string, PartnerMgmt>>({});
+  const [mgmtHydrated, setMgmtHydrated] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(MGMT_KEY);
+      if (raw) setMgmt(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+    setMgmtHydrated(true);
+  }, []);
+  useEffect(() => {
+    if (!mgmtHydrated) return;
+    try {
+      localStorage.setItem(MGMT_KEY, JSON.stringify(mgmt));
+    } catch {
+      /* ignore */
+    }
+  }, [mgmt, mgmtHydrated]);
+  const mgmtOf = (code: string): PartnerMgmt => mgmt[code] ?? EMPTY_MGMT;
+  const patchMgmt = (code: string, partial: Partial<PartnerMgmt>) =>
+    setMgmt((prev) => ({ ...prev, [code]: { ...EMPTY_MGMT, ...prev[code], ...partial } }));
+  const exportMgmt = () => {
+    const url = URL.createObjectURL(new Blob([mgmtToCsv(partners, mgmt)], { type: "text/csv;charset=utf-8;" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "거래처_관리시트.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // AppSheet 임베드 URL
   const [appUrl, setAppUrl] = useState("");
@@ -157,6 +201,26 @@ export default function PartnersDashboard() {
           <Kpi label="거래중단" value={counts.중단} unit="개사" tone="rose" />
         </section>
 
+        {/* 보기 전환 탭 */}
+        <section className="mt-6 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex rounded-xl border border-cream-deep bg-white p-1">
+            <button onClick={() => setView("info")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition ${view === "info" ? "bg-espresso text-cream" : "text-bean hover:text-roast"}`}>
+              거래처 정보 <span className="text-[10px] font-medium opacity-70">전산</span>
+            </button>
+            <button onClick={() => setView("mgmt")} className={`rounded-lg px-4 py-1.5 text-sm font-bold transition ${view === "mgmt" ? "bg-mint text-white" : "text-bean hover:text-roast"}`}>
+              관리 시트 <span className="text-[10px] font-medium opacity-70">자체</span>
+            </button>
+          </div>
+          {view === "mgmt" && (
+            <button onClick={exportMgmt} className="rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs font-medium text-bean transition hover:bg-cream-deep">⬇ 관리시트 CSV</button>
+          )}
+        </section>
+        <p className="mt-2 text-xs leading-relaxed text-bean/70">
+          {view === "info"
+            ? "거래처 기본정보는 전산(ERP)에서 받아 ‘CSV/엑셀’로 업로드합니다. 업로드 시 기본정보만 교체되고, 관리 시트 내용은 그대로 유지됩니다."
+            : "전산에 없는 자체 관리 항목(등급·주거래·자사담당·결제메모·관리상태 등)을 거래처별로 관리합니다. 거래처코드 기준으로 저장되어 전산 데이터를 다시 받아도 유지됩니다."}
+        </p>
+
         {/* Toolbar */}
         <section className="mt-6 flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-cream-deep bg-white p-0.5">
@@ -176,7 +240,8 @@ export default function PartnersDashboard() {
           <button onClick={() => confirm("샘플 데이터로 초기화할까요?") && reset()} className="rounded-lg border border-cream-deep bg-white px-3 py-2 text-xs font-medium text-bean transition hover:bg-cream-deep">초기화</button>
         </section>
 
-        {/* Table */}
+        {/* 거래처 정보 표 (전산) */}
+        {view === "info" && (
         <section className="mt-3 overflow-x-auto rounded-2xl border border-cream-deep bg-white shadow-sm">
           <table className="w-full min-w-[1080px] border-collapse text-sm">
             <thead>
@@ -218,6 +283,63 @@ export default function PartnersDashboard() {
             </tbody>
           </table>
         </section>
+        )}
+
+        {/* 관리 시트 (자체 관리 레이어) */}
+        {view === "mgmt" && (
+        <section className="mt-3 overflow-x-auto rounded-2xl border border-mint/40 bg-white shadow-sm">
+          <table className="w-full min-w-[1120px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-cream-deep bg-mint/10 text-xs text-bean">
+                <th className="px-3 py-2.5 text-left font-semibold">거래처</th>
+                <th className="px-2 py-2.5 text-center font-semibold">관리등급</th>
+                <th className="px-2 py-2.5 text-center font-semibold">주거래</th>
+                <th className="px-3 py-2.5 text-left font-semibold">자사 담당</th>
+                <th className="px-3 py-2.5 text-left font-semibold">결제/단가 메모</th>
+                <th className="px-2 py-2.5 text-center font-semibold">최근 접촉일</th>
+                <th className="px-2 py-2.5 text-center font-semibold">관리상태</th>
+                <th className="px-3 py-2.5 text-left font-semibold">메모</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p) => {
+                const m = mgmtOf(p.code);
+                return (
+                  <tr key={p.code} className="border-b border-cream-deep/60 last:border-0">
+                    <td className="px-3 py-2">
+                      <div className="font-bold text-ink">{p.name}</div>
+                      <div className="text-[11px] text-bean/60">{p.code} · {p.type}</div>
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <select value={m.grade} onChange={(e) => patchMgmt(p.code, { grade: e.target.value })} className="msel">
+                        <option value="">-</option>
+                        {MGMT_GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <select value={m.mainDeal} onChange={(e) => patchMgmt(p.code, { mainDeal: e.target.value })} className="msel">
+                        <option value="">-</option><option value="예">예</option><option value="아니오">아니오</option>
+                      </select>
+                    </td>
+                    <td className="px-3 py-2"><input value={m.ourManager} onChange={(e) => patchMgmt(p.code, { ourManager: e.target.value })} className="minp" placeholder="담당자" /></td>
+                    <td className="px-3 py-2"><input value={m.payNote} onChange={(e) => patchMgmt(p.code, { payNote: e.target.value })} className="minp" placeholder="결제/단가 메모" /></td>
+                    <td className="px-2 py-2 text-center"><input type="date" value={m.lastContact} onChange={(e) => patchMgmt(p.code, { lastContact: e.target.value })} className="msel" /></td>
+                    <td className="px-2 py-2 text-center">
+                      <select value={m.mgmtStatus} onChange={(e) => patchMgmt(p.code, { mgmtStatus: e.target.value })} className={`msel font-bold ${MGMT_STATUS_CHIP[m.mgmtStatus] || ""}`}>
+                        {MGMT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2"><input value={m.memo} onChange={(e) => patchMgmt(p.code, { memo: e.target.value })} className="minp" placeholder="메모" /></td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr><td colSpan={8} className="px-3 py-10 text-center text-sm text-bean/60">조건에 맞는 거래처가 없습니다.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+        )}
 
         {/* AppSheet 연동 */}
         <section className="mt-10">
@@ -319,6 +441,10 @@ export default function PartnersDashboard() {
         .input:focus { outline:none; border-color:var(--color-mint); }
         .select { border:1px solid var(--color-cream-deep); border-radius:0.5rem; padding:0.5rem 0.7rem; font-size:0.75rem; font-weight:500; color:var(--color-bean); background:#fff; }
         .select:focus { outline:none; border-color:var(--color-mint); }
+        .minp { width:100%; min-width:90px; border:1px solid var(--color-cream-deep); border-radius:0.375rem; padding:0.3rem 0.45rem; font-size:0.75rem; color:var(--color-roast); background:#fff; }
+        .minp:focus { outline:none; border-color:var(--color-mint); }
+        .msel { border:1px solid var(--color-cream-deep); border-radius:0.375rem; padding:0.3rem 0.4rem; font-size:0.75rem; color:var(--color-roast); background:#fff; }
+        .msel:focus { outline:none; border-color:var(--color-mint); }
       `}</style>
     </main>
   );

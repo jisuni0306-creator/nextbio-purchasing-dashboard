@@ -116,3 +116,39 @@ export function rowsToPartners(rows: Record<string, unknown>[]): Partner[] {
 
 // 업로드 파일(CSV/엑셀 행) 파싱 진입점 (CSV는 parseCsv 재사용)
 export const parsePartnerCsv = (text: string) => rowsToPartners(parseCsv(text));
+
+// ── 관리 시트(별도 관리 레이어) ──
+// 거래처 기본정보는 전산에서 업로드(교체)하고, 아래 관리 항목은 거래처코드 기준으로 별도 보관해
+// 전산 데이터를 다시 받아도 유지된다.
+export interface PartnerMgmt {
+  grade: string; // 관리등급 (S/A/B/C)
+  mainDeal: string; // 주거래 (예/아니오)
+  ourManager: string; // 자사 담당자
+  payNote: string; // 결제/단가 관리 메모
+  lastContact: string; // 최근 접촉일 (YYYY-MM-DD)
+  mgmtStatus: string; // 관리상태 (정상/주의/검토/중단)
+  memo: string; // 관리 메모
+}
+
+export const MGMT_GRADES = ["S", "A", "B", "C"];
+export const MGMT_STATUSES = ["정상", "주의", "검토", "중단"];
+
+export const EMPTY_MGMT: PartnerMgmt = {
+  grade: "", mainDeal: "", ourManager: "", payNote: "", lastContact: "", mgmtStatus: "정상", memo: "",
+};
+
+export const MGMT_CSV_HEADERS = [
+  "거래처코드", "거래처명", "관리등급", "주거래", "자사담당", "결제/단가메모", "최근접촉일", "관리상태", "메모",
+];
+
+export function mgmtToCsv(partners: Partner[], map: Record<string, PartnerMgmt>): string {
+  const esc = (v: unknown) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const body = partners.map((p) => {
+    const m = map[p.code] ?? EMPTY_MGMT;
+    return [p.code, p.name, m.grade, m.mainDeal, m.ourManager, m.payNote, m.lastContact, m.mgmtStatus, m.memo].map(esc).join(",");
+  });
+  return "﻿" + MGMT_CSV_HEADERS.join(",") + "\n" + body.join("\n");
+}
