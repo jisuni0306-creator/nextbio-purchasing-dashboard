@@ -19,6 +19,14 @@ const CARDS = [
     accent: "from-mint/20",
   },
   {
+    href: "/warehouse",
+    emoji: "🏭",
+    title: "적치대별 재고 현황",
+    sub: "모듈 ③",
+    desc: "창고 적치대(4단)별 적재 Lot·제품을 한눈에. 배치도·Lot 추적·입고/불출 등록.",
+    accent: "from-sky-400/15",
+  },
+  {
     href: "/partners",
     emoji: "🤝",
     title: "거래처 관리대장",
@@ -50,7 +58,7 @@ export default function Home() {
       </header>
 
       <div className="mx-auto max-w-6xl px-5 py-10 sm:py-12">
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {CARDS.map((c) => (
             <Link
               key={c.href}
