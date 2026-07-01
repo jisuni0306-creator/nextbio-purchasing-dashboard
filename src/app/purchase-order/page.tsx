@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import PageTOC from "@/components/PageTOC";
 import { useInventory } from "@/lib/useInventory";
 import { suggestedQty, won, num, APPROVAL_LIMIT, type Item } from "@/lib/inventory";
 import { ISSUER, DELIVERY_PLACE, PO_FOOTER, VAT_RATE } from "@/lib/company";
@@ -272,10 +273,12 @@ export default function PurchaseOrderDashboard() {
               </span>
             ))}
           </div>
+          <PageTOC />
         </div>
       </header>
 
       <div className="mx-auto max-w-6xl px-5 py-7">
+        <h2 className="mb-3 text-lg font-extrabold text-coffee">발주서</h2>
         {/* 요약 */}
         <section className="grid grid-cols-3 gap-3">
           <Kpi label="발주서(공급사)" value={num(summary.suppliers)} unit="건" />
