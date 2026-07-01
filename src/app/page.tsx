@@ -1,5 +1,4 @@
 import Link from "next/link";
-import DashboardNav from "@/components/DashboardNav";
 
 const CARDS = [
   {
@@ -39,8 +38,6 @@ const CARDS = [
 export default function Home() {
   return (
     <main className="min-h-screen bg-cream text-ink">
-      <DashboardNav />
-
       <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-mint-light/40">
         <div className="mx-auto max-w-6xl px-5 py-14 sm:py-20">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-bean shadow-sm ring-1 ring-cream-deep">

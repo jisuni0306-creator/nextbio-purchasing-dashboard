@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import DashboardNav from "@/components/DashboardNav";
 import { useInventory } from "@/lib/useInventory";
 import { suggestedQty, won, num, APPROVAL_LIMIT, type Item } from "@/lib/inventory";
 import { ISSUER, DELIVERY_PLACE, PO_FOOTER, VAT_RATE } from "@/lib/company";
@@ -239,8 +238,6 @@ export default function PurchaseOrderDashboard() {
 
   return (
     <main className="min-h-screen bg-cream text-ink">
-      <DashboardNav />
-
       {/* Header */}
       <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-mint-light/40">
         <div className="mx-auto max-w-6xl px-5 py-9">

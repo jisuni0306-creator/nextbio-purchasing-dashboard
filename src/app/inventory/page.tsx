@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Fragment, useMemo, useRef, useState } from "react";
-import DashboardNav from "@/components/DashboardNav";
 import { useInventory } from "@/lib/useInventory";
 import {
   rop,
@@ -146,8 +145,6 @@ export default function InventoryDashboard() {
 
   return (
     <main className="min-h-screen bg-cream text-ink">
-      <DashboardNav />
-
       {/* Header */}
       <header className="border-b border-cream-deep bg-gradient-to-br from-white via-cream to-mint-light/40">
         <div className="mx-auto max-w-6xl px-5 py-9">
