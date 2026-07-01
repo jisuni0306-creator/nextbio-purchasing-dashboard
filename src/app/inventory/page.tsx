@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Fragment, useMemo, useRef, useState } from "react";
-import PageTOC from "@/components/PageTOC";
 import { useInventory } from "@/lib/useInventory";
 import {
   rop,
@@ -158,7 +157,6 @@ export default function InventoryDashboard() {
             통합 기준 시트(SSOT)에서 ROP·안전재고를 기준으로 부족/과잉을 자동 판정합니다.
             <span className="font-semibold text-roast"> ROP = 일평균출고 × 리드타임 + 안전재고</span>
           </p>
-          <PageTOC />
         </div>
       </header>
 

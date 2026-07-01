@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import PageTOC from "@/components/PageTOC";
 import { usePartners } from "@/lib/usePartners";
 import {
   PARTNER_TYPES,
@@ -352,7 +351,6 @@ export default function PartnersDashboard() {
           <p className="mt-2 max-w-2xl text-sm text-bean">
             매입·매출 거래처 정보를 한 곳에서 관리하고, <span className="font-semibold text-roast">AppSheet 등록 폼</span>과 구글시트로 연동합니다.
           </p>
-          <PageTOC />
         </div>
       </header>
 

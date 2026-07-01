@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import PageTOC from "@/components/PageTOC";
 import { useInventory } from "@/lib/useInventory";
 import { suggestedQty, won, num, APPROVAL_LIMIT, type Item } from "@/lib/inventory";
 import { ISSUER, DELIVERY_PLACE, PO_FOOTER, VAT_RATE } from "@/lib/company";
@@ -273,7 +272,6 @@ export default function PurchaseOrderDashboard() {
               </span>
             ))}
           </div>
-          <PageTOC />
         </div>
       </header>
 

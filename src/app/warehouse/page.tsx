@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import PageTOC from "@/components/PageTOC";
 import { useRackSlots } from "@/lib/useRackSlots";
 import {
   LEVELS,
@@ -242,7 +241,6 @@ export default function WarehouseDashboard() {
           <p className="mt-2 max-w-2xl text-sm text-bean">
             창고 적치대(기본 <span className="font-semibold text-roast">4단</span>)별 적재 Lot·제품을 한눈에. 칸을 누르면 Lot 상세가 보입니다.
           </p>
-          <PageTOC />
         </div>
       </header>
 
