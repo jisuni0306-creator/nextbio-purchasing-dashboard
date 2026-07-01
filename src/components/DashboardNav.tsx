@@ -48,37 +48,35 @@ export default function DashboardNav() {
         {LINKS.map((l) => {
           const active = pathname === l.href;
           return (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`flex shrink-0 items-center justify-between rounded-lg px-3.5 py-1.5 transition md:py-2.5 ${
-                active ? "bg-espresso text-cream shadow-sm" : "text-bean hover:bg-cream-deep"
-              }`}
-            >
-              <span className="text-sm font-bold">{l.label}</span>
-              <span className={`ml-1.5 text-[10px] font-medium ${active ? "text-mint-light" : "text-bean/60"}`}>{l.sub}</span>
-            </Link>
+            <div key={l.href} className="contents md:block">
+              <Link
+                href={l.href}
+                className={`flex shrink-0 items-center justify-between rounded-lg px-3.5 py-1.5 transition md:py-2.5 ${
+                  active ? "bg-espresso text-cream shadow-sm" : "text-bean hover:bg-cream-deep"
+                }`}
+              >
+                <span className="text-sm font-bold">{l.label}</span>
+                <span className={`ml-1.5 text-[10px] font-medium ${active ? "text-mint-light" : "text-bean/60"}`}>{l.sub}</span>
+              </Link>
+
+              {/* 활성 탭 아래에 현재 페이지 목차(소제목) 펼침 (데스크톱) */}
+              {active && toc.length >= 2 && (
+                <div className="mb-1 mt-0.5 hidden flex-col gap-0.5 border-l-2 border-cream-deep pl-2 md:ml-3 md:flex">
+                  {toc.map((t) => (
+                    <a
+                      key={t.id}
+                      href={`#${t.id}`}
+                      className="truncate rounded-md px-2.5 py-1 text-xs font-medium text-bean/80 transition hover:bg-cream-deep hover:text-roast"
+                      title={t.label}
+                    >
+                      {t.label}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
           );
         })}
-
-        {/* 현재 페이지 목차 (사이드바 하단, 데스크톱) */}
-        {toc.length >= 2 && (
-          <div className="mt-3 hidden border-t border-cream-deep pt-3 md:block">
-            <p className="px-2 pb-1 text-[10px] font-bold tracking-wide text-bean/50">목차</p>
-            <div className="flex flex-col gap-0.5">
-              {toc.map((t) => (
-                <a
-                  key={t.id}
-                  href={`#${t.id}`}
-                  className="truncate rounded-md px-3 py-1 text-xs font-medium text-bean/90 transition hover:bg-cream-deep hover:text-roast"
-                  title={t.label}
-                >
-                  {t.label}
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   );
